@@ -314,7 +314,8 @@ COMMON_FLAGS := -O2 \
 			   -fno-stack-protector \
 			   -fno-strict-aliasing \
 			   -mno-red-zone \
-			   -mcmodel=large
+			   -mcmodel=large \
+				 -fno-strict-overflow
 			  
 
 CXXFLAGS := $(COMMON_FLAGS) \

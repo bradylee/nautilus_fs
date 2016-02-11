@@ -1,0 +1,2 @@
+ASM file depend properly on IMG (rebuild on any change)
+
