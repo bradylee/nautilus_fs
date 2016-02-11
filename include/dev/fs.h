@@ -4,17 +4,17 @@
 //#include <nautilus/printk.h>
 #include <nautilus/list.h>
 
-extern uint8_t ramdisk_start, ramdisk_end;
+extern uint8_t RAMFS_START, RAMFS_END;
 
 struct super_block {
-	struct list_head s_list;
-	uint32_t s_blocksize;
-	uint64_t s_maxbytes; // max file size
-	struct file_system_type * s_type;
-	uint32_t s_magic;
-	struct list_head s_inodes;
-	struct list_head s_files;
-	char* id; // container device
+	//struct list_head s_list;
+	//uint32_t s_blocksize;
+	//uint64_t s_maxbytes; // max file size
+	//struct file_system_type * s_type;
+	//uint32_t s_magic;
+	//struct list_head s_inodes;
+	//struct list_head s_files;
+	//char* id; // container device
 	// ...
 };
 
@@ -26,12 +26,12 @@ struct super_block {
 // ...
 
 struct inode {
-	struct list_head i_list;
-	struct list_head i_dentry;
-	uint64_t i_size; // file length
-	uint32_t i_blksize;
-	uint32_t i_blocks;
-	struct super_block *i_sb;
+	//struct list_head i_list;
+	//struct list_head i_dentry;
+	//uint64_t i_size; // file length
+	//uint32_t i_blksize;
+	//uint32_t i_blocks;
+	//struct super_block *i_sb;
 	// ...
 };
 
@@ -44,11 +44,11 @@ struct inode {
 // ...
 
 struct dentry {
-	//spinlock_t d_lock;
-	struct inode *d_inode;
-	struct dentry *d_parent;
-	struct list_head d_subdirs;
-	struct super_block * d_sb;
+	////spinlock_t d_lock;
+	//struct inode *d_inode;
+	//struct dentry *d_parent;
+	//struct list_head d_subdirs;
+	//struct super_block * d_sb;
 	// ...
 };
 
@@ -56,8 +56,8 @@ struct dentry {
 // ...
 
 struct file {
-	struct list_head f_list;
-	struct dentry *f_dentry;
+	//struct list_head f_list;
+	//struct dentry *f_dentry;
 	// ...
 };
 
@@ -68,8 +68,6 @@ struct file {
 // lock()
 // release()
 // ...
-
-
 
 /*
 enum file_access_flags {O_RDONLY, O_WRONLY, O_RDWR, O_APPEND};

@@ -53,6 +53,7 @@
 #include <dev/i8254.h>
 #include <dev/kbd.h>
 #include <dev/serial.h>
+#include <dev/fs.h>
 
 #ifdef NAUT_CONFIG_NDPC_RT
 #include "ndpc_preempt_threads.h"
@@ -262,6 +263,11 @@ init (unsigned long mbd,
     sti();
 
     runtime_init();
+
+		// print inode count
+		printk("%d\n", *(uint32_t*)(&RAMFS_START+1024));
+		// print block count
+		printk("%d\n", *(uint32_t*)(&RAMFS_START+1028));
 
     printk("Nautilus boot thread yielding (indefinitely)\n");
     /* we don't come back from this */

@@ -1,6 +1,6 @@
 .align 4096
-.global ramfs_start
-ramfs_start:
+.global RAMFS_START 
+RAMFS_START:
 .incbin "ramfs.img"
-.global ramfs_end 
-ramfs_end:
+.global RAMFS_END 
+RAMFS_END:
