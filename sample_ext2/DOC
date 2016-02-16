@@ -1,0 +1,12 @@
+DOC file for dmw956 and prk881
+
+For this project, we followed the specifications of the ext2 file system to create our own implementations of the reference functions. Some important design decisions were:
+
+
+1.) Since we were allowed to assume only 1 block group, this made some of our functions simpler. get_inode() and get_block_group() were not as complicated to implement since we didn't need to search for the correct block group.
+
+2.) We decided to malloc/free temporary buffers for each filename in get_inode_from_dir() due to issues we were having with the name field of the directory entries. There were garbage values in some of the name char* arrays which caused our comparison of names to have issues. Therefore, we manually copied each character of the name into a separate buffer and null terminated it to ensure that only the relavant characters of the name were compared. 
+
+3) In get_inode_by_path, we were having issues with segmentation faults when trying to perform the directory search on each part of the split path. To correct this, we found the number of components in the path using the number of slashes, in the same way as was done in split_path. This allowed us to have an exact number of times to search a directory for an inode.
+
+
