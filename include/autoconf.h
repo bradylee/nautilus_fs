@@ -1,7 +1,7 @@
 /*
  * Automatically generated C config: don't edit
  * Nautilus version: 
- * Thu Feb 11 16:06:57 2016
+ * Thu Feb 18 15:00:02 2016
  */
 #define AUTOCONF_INCLUDED
 
@@ -65,4 +65,4 @@
 #define NAUT_CONFIG_SERIAL_PORT 1
 #undef NAUT_CONFIG_HPET
 #define NAUT_CONFIG_HZ 10
-#undef NAUT_CONFIG_VIRTIO_PCI
+#define NAUT_CONFIG_VIRTIO_PCI 1

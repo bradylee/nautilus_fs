@@ -1,5 +1,5 @@
 // ext2 definitions from the real driver in the Linux kernel.
-#include "ext2/ext2fs.h"
+#include "fs/ext2/ext2fs.h"
 
 // This header allows your project to link against the reference library. If you
 // complete the entire project, you should be able to remove this directive and
@@ -7,7 +7,7 @@
 //#include "reference_implementation.h"
 
 // Definitions for ext2cat to compile against.
-#include "ext2/ext2_access.h"
+#include "fs/ext2/ext2_access.h"
 
 
 
@@ -111,20 +111,20 @@ char ** split_path(char * path) {
     }
 
     // Copy out each piece by advancing two pointers (piece_start and slash).
-    char ** parts = (char **) calloc(num_slashes, sizeof(char *));
+    char ** parts = (char **) malloc(num_slashes*sizeof(char *));
     char * piece_start = path + 1;
     int i = 0;
     for (char * slash = strchr(path + 1, '/');
          slash != NULL;
          slash = strchr(slash + 1, '/')) {
         int part_len = slash - piece_start;
-        parts[i] = (char *) calloc(part_len + 1, sizeof(char));
+        parts[i] = (char *) malloc((part_len + 1)*sizeof(char));
         strncpy(parts[i], piece_start, part_len);
         piece_start = slash + 1;
         i++;
     }
     // Get the last piece.
-    parts[i] = (char *) calloc(strlen(piece_start) + 1, sizeof(char));
+    parts[i] = (char *) malloc((strlen(piece_start) + 1)*sizeof(char));
     strncpy(parts[i], piece_start, strlen(piece_start));
     return parts;
 }

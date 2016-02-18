@@ -1,7 +1,7 @@
 #ifndef __EXT2_ACCESS_H
 #define __EXT2_ACCESS_H
 
-#include "ext2fs.h"
+#include "fs/ext2/ext2fs.h"
 
 
 struct ext2_super_block * get_super_block(void * fs);

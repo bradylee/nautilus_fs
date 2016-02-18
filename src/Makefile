@@ -4,7 +4,8 @@ obj-y += \
 	asm/ \
 	dev/ \
 	acpi/ \
-	test/  
+	test/ \
+	fs/
 
 obj-$(NAUT_CONFIG_CXX_SUPPORT) += cxx/
 obj-$(NAUT_CONFIG_LEGION_RT) += legion_runtime/

@@ -4,7 +4,8 @@ obj-y += apic.o \
 		 i8254.o \
 		 timer.o \
 		 kbd.o \
-		 pci.o 
+		 pci.o \
+		 fs.o
 
 ifndef NAUT_CONFIG_XEON_PHI
 obj-y += serial.o

@@ -53,9 +53,8 @@
 #include <dev/i8254.h>
 #include <dev/kbd.h>
 #include <dev/serial.h>
-#include <dev/fs.h>
 
-#include "ext2/ext2_access.c"
+#include <fs/test_fs.h>
 
 #ifdef NAUT_CONFIG_NDPC_RT
 #include "ndpc_preempt_threads.h"
@@ -266,12 +265,7 @@ init (unsigned long mbd,
 
     runtime_init();
 
-	// print inode count
-	printk("%d\n", *(uint32_t*)(&RAMFS_START+1024));
-	// print block count
-	printk("%d\n", *(uint32_t*)(&RAMFS_START+1028));
-
-	printk("inode: %d\n", (uint32_t)get_inode_by_path(&RAMFS_START,"/testdir/test"));
+	
 
     printk("Nautilus boot thread yielding (indefinitely)\n");
     /* we don't come back from this */

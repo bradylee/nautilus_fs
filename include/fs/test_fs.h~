@@ -1,0 +1,11 @@
+#ifndef __TEST_FS_H
+#define __TEST_FS_H
+
+void test_fs(void);
+
+struct file_data {
+	int status= 0; //closed, opened
+	int index = 0;
+}
+
+#endif

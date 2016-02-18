@@ -1,0 +1,3 @@
+obj-y += ext2_access.o \
+	test_fs.o 
+	

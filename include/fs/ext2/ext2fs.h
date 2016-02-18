@@ -41,14 +41,15 @@
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
+#include <nautilus/mm.h>
 
-#include <stdio.h>
+/*#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <fcntl.h>*/
 
 #ifndef __USE_XOPEN2K
 /* If the "#define _XOPEN_SOURCE 600" didn't succeed in declaring
@@ -57,7 +58,7 @@
 extern int posix_memalign(void **__memptr, size_t __alignment, size_t __size);
 #endif
 
-#include "ext2_types.h"
+#include "fs/ext2/ext2_types.h"
 
 typedef __u32		ext2_ino_t;
 typedef __u32		blk_t;
