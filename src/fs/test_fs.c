@@ -23,12 +23,9 @@ void test_fs() {
 	n = file_read(fn, buffer, 5);
 	printk("%s\n", buffer);
 	n = file_read(fn, buffer, 5);
-	printk("%s\n", buffer);
-	n = file_read(fn, buffer, 5);
-	printk("%s\n", buffer);
-	n = file_read(fn, buffer, 5);
-	printk("%s\n", buffer);
-
+	printk("%s\n\n", buffer);
+	
+	dir_ls("/testdir");
 
 }
 
@@ -88,4 +85,31 @@ size_t file_read(int file_number, char * dst, size_t num_bytes) {
 }
 
 void ext2_write() {
+}
+
+void dir_ls(char* path) {
+    char* tempname;
+    struct ext2_dir_entry_2* directory_entry;
+	struct ext2_inode * dir = get_inode(&RAMFS_START, get_inode_by_path(&RAMFS_START,path));
+    //get pointer to block where directory entries reside using inode of directory
+    directory_entry = (struct ext2_dir_entry_2*)get_block(&RAMFS_START,dir->i_block[0]);
+
+	//scan only valid files in directory
+    while(directory_entry->inode != 0){
+
+        //create temporary name
+        tempname = (char*)malloc(directory_entry->name_len*sizeof(char));
+		int i;
+        //copy file name to temp name, then null terminate it
+		for(i = 0; i < directory_entry->name_len; i++){
+			tempname[i] = directory_entry->name[i];
+		}
+		tempname[i] = '\0';
+		if(strcmp(tempname,".") && strcmp(tempname,"..")) { //strcmp -> 0 = equal, !0 = not equal
+			printk("%s\n", tempname);
+		}
+		directory_entry = (struct ext2_dir_entry_2*)((void*)directory_entry+directory_entry->rec_len);
+
+		free(tempname);
+	}
 }

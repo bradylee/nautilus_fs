@@ -8,6 +8,7 @@ uint32_t ext2_open(char * path, int access);
 size_t ext2_read(int file_number, char * dst, size_t num_bytes, size_t offset);
 size_t file_open(char *path, int access);
 size_t file_read(int file_number, char *dst, size_t num_bytes);
+void dir_ls(char* path);
 
 struct file_data {
 	int status; //closed = -1, opened = thread_id
