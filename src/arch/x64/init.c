@@ -265,7 +265,9 @@ init (unsigned long mbd,
 
     runtime_init();
 
+
 	test_fs();
+
 
     printk("Nautilus boot thread yielding (indefinitely)\n");
     /* we don't come back from this */
