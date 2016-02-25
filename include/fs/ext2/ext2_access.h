@@ -3,7 +3,6 @@
 
 #include "fs/ext2/ext2fs.h"
 
-
 struct ext2_super_block * get_super_block(void * fs);
 
 __u32 get_block_size(void * fs);

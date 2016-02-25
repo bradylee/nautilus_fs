@@ -9,8 +9,6 @@
 // Definitions for ext2cat to compile against.
 #include "fs/ext2/ext2_access.h"
 
-
-
 ///////////////////////////////////////////////////////////
 //  Accessors for the basic components of ext2.
 ///////////////////////////////////////////////////////////
@@ -20,7 +18,6 @@ struct ext2_super_block * get_super_block(void * fs) {
     
     //Super block is always a constant offset away from fs
     return (struct ext2_super_block*)(fs+SUPERBLOCK_OFFSET);
-    
 }
 
 
@@ -49,7 +46,6 @@ void * get_block(void * fs, __u32 block_num) {
 
     //gets block size, adds block offset to beginning of fs
     return (void*)(block_size*block_num + fs);
-
 }
 
 

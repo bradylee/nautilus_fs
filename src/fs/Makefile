@@ -1,3 +1,2 @@
-obj-y += ext2_access.o \
-	test_fs.o 
-	
+obj-y += fs.o \
+	ext2/

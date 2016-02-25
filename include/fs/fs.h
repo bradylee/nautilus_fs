@@ -1,105 +1,39 @@
-#ifndef __NAUTILUS_FS_H__
-#define __NAUTILUS_FS_H__
+#ifndef __FS_H
+#define __FS_H
 
-//#include <nautilus/printk.h>
 #include <nautilus/list.h>
+#include <nautilus/printk.h>
+
+#include <fs/ext2/ext2.h>
 
 extern uint8_t RAMFS_START, RAMFS_END;
 
-struct super_block {
-	//struct list_head s_list;
-	//uint32_t s_blocksize;
-	//uint64_t s_maxbytes; // max file size
-	//struct file_system_type * s_type;
-	//uint32_t s_magic;
-	//struct list_head s_inodes;
-	//struct list_head s_files;
-	//char* id; // container device
-	// ...
+static uint8_t EOF = 255;
+static struct list_head open_files;
+
+struct file_data {
+	struct list_head file_node;
+	int status; //closed = -1, opened = thread_id
+	size_t position;
+	uint32_t filenum;
 };
 
-/* super block methods */
-// alloc_inode()
-// destroy_inode()
-// read_inode()
-// write_inode()
-// ...
-
-struct inode {
-	//struct list_head i_list;
-	//struct list_head i_dentry;
-	//uint64_t i_size; // file length
-	//uint32_t i_blksize;
-	//uint32_t i_blocks;
-	//struct super_block *i_sb;
-	// ...
-};
-
-/* inode methods */
-// create()
-// lookup()
-// mkdir()
-// rmdir()
-// rename()
-// ...
-
-struct dentry {
-	////spinlock_t d_lock;
-	//struct inode *d_inode;
-	//struct dentry *d_parent;
-	//struct list_head d_subdirs;
-	//struct super_block * d_sb;
-	// ...
-};
-
-/* dentry methods */
-// ...
-
-struct file {
-	//struct list_head f_list;
-	//struct dentry *f_dentry;
-	// ...
-};
-
-/* file methods */
-// read()
-// write()
-// open()
-// lock()
-// release()
-// ...
-
-/*
-enum file_access_flags {O_RDONLY, O_WRONLY, O_RDWR, O_APPEND};
-
-struct block_device {
-	uint64_t size;
-	uint8_t *contents;
-};
-
-struct file {
-	uint64_t size;
-	uint64_t position;
-	uint8_t *contents;
-};
-
+void test_fs(void);
 void init_fs(void);
-int mount_block_device(struct block_device *device);
-int unmount_block_device(struct block_device *device);
+void deinit_fs(void);
 
-int open(char *filepath, int access);
-size_t read(int fileid, char *dst, size_t n);
-size_t write(int fileid, char *src, size_t n);
-int close(int fileid);
-int seek(int fileid, size_t position);
-size_t tell(int fileid);
+size_t file_open(char *path, int access);
+void __file_close(struct file_data*);
+int file_close(uint32_t filenum);
+size_t file_seek(int filenum, size_t offset, int pos);
+size_t file_read(int filenum, char *dst, size_t num_bytes);
+size_t file_write(int filenum, char *write_data, size_t num_bytes);
+size_t file_append(int filenum, char* write_data, size_t num_bytes);
+void __file_print(struct file_data*);
 
-int ext2_open(char *filepath, int access);
-size_t ext2_read(int fileid, char *dst, size_t n);
-size_t ext2_write(int fileid, char *src, size_t n);
-int ext2_close(int fileid);
-int ext2_seek(int fileid, size_t position);
-size_t ext2_tell(int fileid);
-*/
+struct file_data* get_open_file(uint32_t filenum);
+void iterate_opened(void (*callback)(struct file_data*));
+
+void dir_ls(char* path);
 
 #endif
