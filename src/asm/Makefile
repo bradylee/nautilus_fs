@@ -4,5 +4,5 @@ obj-y += smpboot.o \
 		 ramfs.o
 
 # Image must exist to compile
-.depend: ramfs.img
-include .depend 
+#.depend: ramfs.img
+#include .depend 
