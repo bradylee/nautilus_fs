@@ -8,7 +8,7 @@ void test_fs() {
 	fn = file_open("/null", 1);
 	fn = file_open("/nothing", 1);
 	fn = file_open("/nothing", 1);
-	iterate_opened(__file_print);
+	__iterate_opened(__file_print);
 	printk("Closing files...\n");
 	deinit_fs();
 	printk("Done\n");
@@ -20,10 +20,10 @@ void init_fs(void) {
 }
 
 void deinit_fs(void) {
-	iterate_opened(__file_close);
+	__iterate_opened(__file_close);
 }
 
-void iterate_opened(void (*callback)(struct file_data*)) {
+void __iterate_opened(void (*callback)(struct file_data*)) {
 	struct list_head *cur;
 	struct list_head *temp;
 	struct file_data *fd;
@@ -57,7 +57,7 @@ size_t file_open(char *path, int access) {
 	fdp->access = access;
 
 	// check already opened
-	if (!get_open_file(fdp->filenum)) { 
+	if (!__get_open_file(fdp->filenum)) { 
 		list_add(&fdp->file_node, &open_files);
 		printk("Opened %s %d %d\n", path, fdp->filenum, fdp->fileid);
 	}
@@ -71,14 +71,14 @@ void __file_close(struct file_data* fd) {
 }
 
 int file_close(uint32_t filenum) {
-	struct file_data *fd = get_open_file(filenum);
+	struct file_data *fd = __get_open_file(filenum);
 	if (!fd)
 		return 0;
 	__file_close(fd);
 	return 1;
 }
 
-struct file_data* get_open_file(uint32_t filenum) {
+struct file_data* __get_open_file(uint32_t filenum) {
 	struct list_head *cur;
 	struct file_data *fd;
 
@@ -91,9 +91,12 @@ struct file_data* get_open_file(uint32_t filenum) {
 }
 
 size_t file_read(int filenum, char *buf, size_t num_bytes) {
-	struct file_data *target = get_open_file(filenum);
+	struct file_data *target = __get_open_file(filenum);
+	if (target == NULL) {
+		return -1;
+	}
 	if (!(target->access == O_RDONLY || target->access == O_RDWR)) {
-		return 0;
+		return -1;
 	}
 	size_t n = target->read(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
@@ -102,9 +105,12 @@ size_t file_read(int filenum, char *buf, size_t num_bytes) {
 }
 
 size_t file_write(int filenum, char *buf, size_t num_bytes) {
-	struct file_data *target = get_open_file(filenum);
+	struct file_data *target = __get_open_file(filenum);
+	if (target == NULL) {
+		return -1;
+	}
 	if (!(target->access == O_WRONLY || target->access == O_RDWR)) {
-		return 0;
+		return -1;
 	}
 	size_t n = target->write(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
@@ -132,13 +138,16 @@ size_t __file_seek(struct file_data *target, size_t offset, int pos) {
 
 //pos = 0 -> beginning of file, 1 -> current position, 2 -> end of file
 size_t file_seek(int filenum, size_t offset, int pos) {
-	struct file_data *target = get_open_file(filenum);
+	struct file_data *target = __get_open_file(filenum);
+	if (target == NULL) {
+		return -1;
+	}
 	return __file_seek(target, offset, pos);
 }
 
 /*
  size_t file_append(int filenum,char * write_data, size_t num_bytes) {
-	 struct file_data *target = get_open_file(filenum);
+	 struct file_data *target = __get_open_file(filenum);
 	 uint32_t inode_num = target->filenum;
 	 size_t n = file_seek(filenum,0,2);
 	 n = ext2_write(inode_num, write_data, num_bytes,target->position);

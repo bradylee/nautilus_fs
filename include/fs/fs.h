@@ -42,8 +42,8 @@ size_t file_write(int filenum, char *buf, size_t num_bytes);
 //size_t file_append(int filenum, char* write_data, size_t num_bytes);
 void __file_print(struct file_data*);
 
-struct file_data* get_open_file(uint32_t filenum);
-void iterate_opened(void (*callback)(struct file_data*));
+struct file_data* __get_open_file(uint32_t filenum);
+void __iterate_opened(void (*callback)(struct file_data*));
 
 void dir_ls(char* path);
 
