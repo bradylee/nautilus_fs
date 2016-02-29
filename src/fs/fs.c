@@ -37,21 +37,28 @@ void __file_print(struct file_data* fd) {
 }
 
 size_t file_open(char *path, int access) {
-	uint32_t inode_num = ext2_open(&RAMFS_START, path, access);
 	struct file_data *fdp = malloc(sizeof(struct file_data));
+	uint32_t inode_num = ext2_open(&RAMFS_START, path, access);
 
 	fdp->filenum = inode_num;
+	fdp->access = access;
+	
+	if (access == O_APPEND) {
+		__file_seek(fdp, 0, 2);
+	}
+
 	// check already opened
 	if (!get_open_file(fdp->filenum)) { 
 		printk("Opened %s %d\n", path, fdp->filenum);
 		list_add(&fdp->file_node, &open_files);
 	}
+
 	return fdp->filenum;
 }
 
 void __file_close(struct file_data* fd) {
 	list_del((struct list_head*)fd);
-	//free(fd);
+	free(fd);
 }
 
 int file_close(uint32_t filenum) {
@@ -76,6 +83,11 @@ struct file_data* get_open_file(uint32_t filenum) {
 
 size_t file_read(int filenum, char * dst, size_t num_bytes) {
 	struct file_data *target = get_open_file(filenum);
+
+	if (!(target->access == O_RDONLY || target->access == O_RDWR)) {
+		return 0;
+	}
+
 	uint32_t inode_num = target->filenum;
 	size_t n = ext2_read(inode_num, dst, num_bytes,target->position);
 	target->position += n;
@@ -112,41 +124,49 @@ void dir_ls(char* path) {
 
 size_t file_write(int filenum,char * write_data, size_t num_bytes) {
 	struct file_data *target = get_open_file(filenum);
+
+	if (!(target->access == O_WRONLY || target->access == O_RDWR)) {
+		return 0;
+	}
+
 	uint32_t inode_num = target->filenum;
 	size_t n = ext2_write(inode_num, write_data, num_bytes,target->position);
 	target->position += n;
-	//printk("n: %d pos: %d\n", n, target->position);
 	return n;
+}
+
+size_t __file_seek(struct file_data *target, size_t offset, int pos) {
+	if(pos == 0) {
+		target->position = offset;
+	}
+	else if(pos == 1) {
+		target->position += offset;
+	}
+	else if(pos == 2) {
+		uint64_t size = get_ext2_file_size((uint32_t)target->filenum);
+		//printk("file size = %d\n",size);
+		target->position = size + offset-1;
+	}
+	else {
+		return -1;
+	}
+	return target->position;
 }
 
 //pos = 0 -> beginning of file, 1 -> current position, 2 -> end of file
 size_t file_seek(int filenum, size_t offset, int pos) {
 	struct file_data *target = get_open_file(filenum);
-	if(pos == 0) {
-		target -> position = offset;
-		return target->position;
-	}
-	else if(pos == 1) {
-		target -> position += offset;
-		return target->position;
-	}
-	else if(pos == 2) {
-		uint64_t size = get_ext2_file_size((uint32_t)target->filenum);
-		printk("file size = %d\n",size);
-		target -> position = size + offset-1;
-		return target->position;		
-	}
-	else {
-		return -1;
-	}
+	return __file_seek(target, offset, pos);
 }
 
-size_t file_append(int filenum,char * write_data, size_t num_bytes) {
-	struct file_data *target = get_open_file(filenum);
-	uint32_t inode_num = target->filenum;
-	size_t n = file_seek(filenum,0,2);
-	n = ext2_write(inode_num, write_data, num_bytes,target->position);
-	target->position += n;
-	printk("n: %d pos: %d\n", n, target->position);
-	return n;
-}
+/*
+ size_t file_append(int filenum,char * write_data, size_t num_bytes) {
+	 struct file_data *target = get_open_file(filenum);
+	 uint32_t inode_num = target->filenum;
+	 size_t n = file_seek(filenum,0,2);
+	 n = ext2_write(inode_num, write_data, num_bytes,target->position);
+	 target->position += n;
+	 printk("n: %d pos: %d\n", n, target->position);
+	 return n;
+ }
+ */
