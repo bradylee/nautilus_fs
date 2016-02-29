@@ -20,7 +20,11 @@ static struct list_head open_files;
 struct file_data {
 	struct list_head file_node;
 	size_t position;
+	uint32_t (*open)(uint8_t*, char*, int);
+	size_t (*read)(int, char*, size_t, size_t);
+	size_t (*write)(int, char*, size_t, size_t);
 	uint32_t filenum;
+	uint32_t fileid;
 	int access;
 };
 
@@ -33,8 +37,8 @@ void __file_close(struct file_data*);
 int file_close(uint32_t filenum);
 size_t __file_seek(struct file_data*, size_t offset, int pos);
 size_t file_seek(int filenum, size_t offset, int pos);
-size_t file_read(int filenum, char *dst, size_t num_bytes);
-size_t file_write(int filenum, char *write_data, size_t num_bytes);
+size_t file_read(int filenum, char *buf, size_t num_bytes);
+size_t file_write(int filenum, char *buf, size_t num_bytes);
 //size_t file_append(int filenum, char* write_data, size_t num_bytes);
 void __file_print(struct file_data*);
 

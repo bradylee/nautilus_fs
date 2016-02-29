@@ -6,21 +6,21 @@ uint32_t ext2_open(uint8_t *device, char *path, int access) {
 	return inode_num;
 }
 
-size_t ext2_read(int inode_number, char * dst, size_t num_bytes,size_t offset) {
+size_t ext2_read(int inode_number, char *buf, size_t num_bytes,size_t offset) {
 	struct ext2_inode * inode_pointer = get_inode(&RAMFS_START, inode_number);
 	unsigned char * blocks = (char *)(get_block(&RAMFS_START, inode_pointer->i_block[0]));
 	int i = 0;	
 	uint8_t * cur = blocks + offset;
 	while (i<num_bytes && *cur != 0x0a) {		
-		dst[i] = *cur;		
+		buf[i] = *cur;		
 		i++;
 		cur++;
 	}
-	dst[i] = 0x00; //null terminator
+	buf[i] = 0x00; //null terminator
 	return i;
 }
 
-size_t ext2_write(int inode_number, char* write_data, size_t num_bytes, size_t offset) {
+size_t ext2_write(int inode_number, char *buf, size_t num_bytes, size_t offset) {
 	struct ext2_inode * inode_pointer = get_inode(&RAMFS_START, inode_number);
 	unsigned char * blocks = (char *)(get_block(&RAMFS_START, inode_pointer->i_block[0]));
 	int i = 0;	
@@ -32,7 +32,7 @@ size_t ext2_write(int inode_number, char* write_data, size_t num_bytes, size_t o
 			end_flag = 1;
 			end_bytes = num_bytes-i;
 		}
-		*cur = write_data[i];		
+		*cur = buf[i];		
 		i++;
 		cur++;
 	}
@@ -43,7 +43,7 @@ size_t ext2_write(int inode_number, char* write_data, size_t num_bytes, size_t o
 	return i;
 }
 
-uint64_t get_ext2_file_size(int inode_number) {
+uint64_t ext2_get_file_size(int inode_number) {
 	struct ext2_inode * inode_pointer = get_inode(&RAMFS_START, inode_number);	
 	uint64_t temp = inode_pointer->i_size_high;
 	temp = temp << 32;
