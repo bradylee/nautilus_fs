@@ -50,10 +50,6 @@ size_t file_open(char *path, int access) {
 
 	fdp->filenum = n++; // allows file to be opened multiple times
 	fdp->fileid = fdp->open(&RAMFS_START, path, access);
-
-	if (access == O_APPEND) {
-		__file_seek(fdp, 0, 2);
-	}
 	fdp->access = access;
 
 	// check already opened
@@ -92,12 +88,12 @@ struct file_data* __get_open_file(uint32_t filenum) {
 
 size_t file_read(int filenum, char *buf, size_t num_bytes) {
 	struct file_data *target = __get_open_file(filenum);
-	if (target == NULL) {
+
+	//  RDONLY or RDWR will return the same
+	if (target == NULL || !__file_has_access(target, O_RDONLY)) {
 		return -1;
 	}
-	if (!(target->access == O_RDONLY || target->access == O_RDWR)) {
-		return -1;
-	}
+
 	size_t n = target->read(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
 	//printk("n: %d pos: %d\n", n, target->position);
@@ -106,16 +102,23 @@ size_t file_read(int filenum, char *buf, size_t num_bytes) {
 
 size_t file_write(int filenum, char *buf, size_t num_bytes) {
 	struct file_data *target = __get_open_file(filenum);
-	if (target == NULL) {
+
+	//  WRONLY or RDWR will return the same
+	if (target == NULL || !__file_has_access(target, O_WRONLY)) {
 		return -1;
 	}
-	if (!(target->access == O_WRONLY || target->access == O_RDWR)) {
-		return -1;
+	if (__file_has_access(target, O_APPEND)) {
+		__file_seek(target, 0, 2);
 	}
+
 	size_t n = target->write(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
 	//printk("n: %d pos: %d\n", n, target->position);
 	return n;
+}
+
+int __file_has_access(struct file_data *fd, int access) {
+	return ((fd->access & access) == access);
 }
 
 size_t __file_seek(struct file_data *target, size_t offset, int pos) {
