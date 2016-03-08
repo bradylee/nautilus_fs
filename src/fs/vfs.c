@@ -1,4 +1,4 @@
-#include <fs/fs.h>
+#include <fs/vfs.h>
 
 #define INFO(fmt, args...) printk("FILESYSTEM: " fmt, ##args)
 #define DEBUG(fmt, args...) printk("FILESYSTEM (DEBUG): " fmt, ##args)
@@ -66,12 +66,14 @@ size_t file_open(char *path, int access) {
 	//uint32_t inode_num = ext2_open(&RAMFS_START, path, access);
 
 	// if filetype ext2 then...
-	fd->open = ext2_open;
-	fd->read = ext2_read;
-	fd->write = ext2_write;
+	ext2_set_file_op(fd->op);
+	//fd->op = ext2_file_options;
+	//fd->op->open = ext2_open;
+	//fd->op->read = ext2_read;
+	//fd->op->write = ext2_write;
 
 	fd->filenum = n++; // allows file to be opened multiple times
-	fd->fileid = fd->open(&RAMFS_START, path, access);
+	fd->fileid = fd->op->open(&RAMFS_START, path, access);
 	fd->access = access;
 
 	// check already opened
@@ -124,7 +126,7 @@ size_t file_read(int filenum, char *buf, size_t num_bytes) {
 		return -1;
 	}
 
-	size_t n = target->read(target->fileid, buf, num_bytes, target->position);
+	size_t n = target->op->read(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
 	//printk("n: %d pos: %d\n", n, target->position);
 	return n;
@@ -141,7 +143,7 @@ size_t file_write(int filenum, char *buf, size_t num_bytes) {
 		__file_seek(target, 0, 2);
 	}
 
-	size_t n = target->write(target->fileid, buf, num_bytes, target->position);
+	size_t n = target->op->write(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
 	//printk("n: %d pos: %d\n", n, target->position);
 	return n;

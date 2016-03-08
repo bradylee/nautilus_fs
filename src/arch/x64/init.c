@@ -54,7 +54,7 @@
 #include <dev/kbd.h>
 #include <dev/serial.h>
 
-#include <fs/fs.h>
+#include <fs/vfs.h>
 
 #ifdef NAUT_CONFIG_NDPC_RT
 #include "ndpc_preempt_threads.h"

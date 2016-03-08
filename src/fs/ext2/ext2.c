@@ -1,4 +1,3 @@
-#include <fs/fs.h>
 #include <fs/ext2/ext2.h>
 
 uint32_t ext2_open(uint8_t *device, char *path, int access) {
@@ -49,4 +48,10 @@ uint64_t ext2_get_file_size(int inode_number) {
 	temp = temp << 32;
 	temp = temp | (inode_pointer->i_size);
 	return temp;
+}
+
+void ext2_set_file_op(struct file_operations *op) {
+	op->open = ext2_open;
+	op->read = ext2_read;
+	op->write = ext2_write;
 }
