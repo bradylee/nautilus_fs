@@ -178,7 +178,7 @@ __u32 get_inode_by_path(void * fs, char * path) {
     char* cur_part = *parts;
     int i;
     struct ext2_inode* cur_inode = get_root_dir(fs);
-    __u32 new_inode_num;
+    __u32 new_inode_num = 0;
 
     //use number of slashes to get number of parts in path as in split_path()
     int num_parts = 0;

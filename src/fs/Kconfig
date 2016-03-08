@@ -1,0 +1,26 @@
+menu "Filesystem options"
+
+config ENABLE_FILESYSTEM 
+	bool "Enable filesystem drivers"
+	depends on X86_64_HOST
+	default n
+	help
+		Adds the simple filesytem interface
+
+config EXT2_FILESYSTEM_DRIVER
+	bool "Enable EXT2"
+	depends on ENABLE_FILESYSTEM 
+	default n
+	help
+		Adds EXT2 support
+
+config DEBUG_FILESYSTEM
+	bool "Debug filesystem"
+	depends on DEBUG_PRINTS && ENABLE_FILESYSTEM
+	default n
+	help
+		Turn on debug prints for the filesystem
+
+endmenu
+
+    
