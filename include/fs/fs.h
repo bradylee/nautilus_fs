@@ -39,6 +39,14 @@ struct file_data {
 	spinlock_t lock;
 };
 
+struct filesystem {
+	char *path;
+	struct block_dev *device;
+	enum Filesystem fs_type;
+}
+
+void mount(char *source, char *target);
+void umount(char *target);
 
 void test_fs(void);
 void init_fs(void);

@@ -12,6 +12,7 @@ struct block_dev_int {
 	uint64_t (*get_num_blocks)(void *state);
 	int (*read_block)(void *state, uint64_t blocknum, uint8_t *dest);
 	int (*write_block)(void *state, uint64_t blocknum, uint8_t *src);
+	// async...
 };
 
 struct block_dev {
