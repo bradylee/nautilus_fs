@@ -1,4 +1,5 @@
 deps_config := \
+	src/fs/Kconfig \
 	src/dev/Kconfig \
 	Kconfig
 

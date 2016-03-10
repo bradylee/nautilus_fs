@@ -3,6 +3,7 @@
 
 #include <nautilus/list.h>
 #include <nautilus/printk.h>
+#include <nautilus/spinlock.h>
 
 #include <fs/ext2/ext2.h>
 
@@ -16,7 +17,11 @@
 extern uint8_t RAMFS_START, RAMFS_END;
 
 static uint8_t EOF = 255;
-static struct list_head open_files;
+
+static struct {
+	struct list_head head;
+	spinlock_t lock;
+} open_files;
 
 struct file_data {
 	struct list_head file_node;
@@ -27,6 +32,7 @@ struct file_data {
 	uint32_t filenum;
 	uint32_t fileid;
 	int access;
+	spinlock_t lock;
 };
 
 void test_fs(void);

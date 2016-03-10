@@ -1,16 +1,30 @@
 #include <fs/fs.h>
 
+#define INFO(fmt, args...) printk("FILESYSTEM: " fmt, ##args)
+#define DEBUG(fmt, args...) printk("FILESYSTEM (DEBUG): " fmt, ##args)
+#define ERROR(fmt, args...) printk("FILESYSTEM (ERROR): " fmt, ##args)
+
+#ifndef NAUT_CONFIG_DEBUG_FILESYSTEM
+#undef DEBUG
+#define DEBUG(fmt, args...)
+#endif
+
 void test_fs() {
 
 	init_fs();
-	printk("Opening files...\n");
+	DEBUG("Opening files...\n");
 	uint32_t fn;
 	fn = file_open("/readme", 1);
 	fn = file_open("/null", 1);
 	fn = file_open("/nothing", 1);
 	fn = file_open("/nothing", 1);
+	DEBUG("Done opening\n");
+	DEBUG("Printing...\n");
 	__iterate_opened(__file_print);
-	printk("Closing files...\n");
+	DEBUG("Done printing\n");
+	DEBUG("Closing files...\n");
+	__iterate_opened(__file_close);
+	DEBUG("Done closing\n");
 	deinit_fs();
 	printk("Done\n");
 
@@ -22,18 +36,21 @@ void test_fs() {
   file_seek(fn,0,0);
   file_read(fn,buf,15);
   printk("buffer: %s size: %d\n",buf, ext2_get_file_size(get_inode_by_path(&RAMFS_START,"/a")));
-  
-  
-  
+
 }
 
 void init_fs(void) {
-	printk("Initing list...\n");
-	INIT_LIST_HEAD(&open_files);
+	INFO("Initing...\n");
+	INIT_LIST_HEAD(&open_files.head);
+	spinlock_init(&open_files.lock);
+	INFO("Done initing.\n");
 }
 
 void deinit_fs(void) {
+	INFO("Deiniting...\n");
 	__iterate_opened(__file_close);
+	spinlock_deinit(&open_files.lock);
+	INFO("Done deiniting.\n");
 }
 
 void __iterate_opened(void (*callback)(struct file_data*)) {
@@ -41,7 +58,7 @@ void __iterate_opened(void (*callback)(struct file_data*)) {
 	struct list_head *temp;
 	struct file_data *fd;
 
-	list_for_each_safe(cur, temp, &open_files) {
+	list_for_each_safe(cur, temp, &open_files.head) {
 		fd = (struct file_data*)cur;
 		callback(fd);
 	}
@@ -53,24 +70,31 @@ void __file_print(struct file_data* fd) {
 
 size_t file_open(char *path, int access) {
 	static uint32_t n = 1;
-	struct file_data *fdp = malloc(sizeof(struct file_data));
-	//uint32_t inode_num = ext2_open(&RAMFS_START, path, access);
-	
-	// if filetype ext2 then...
-	fdp->open = ext2_open;
-	fdp->read = ext2_read;
-	fdp->write = ext2_write;
-  fdp->position = 0;
 
-	fdp->filenum = n++; // allows file to be opened multiple times
-	fdp->fileid = fdp->open(&RAMFS_START, path, access);
-	fdp->access = access;
+	spin_lock(&open_files.lock);
+
+	struct file_data *fd = malloc(sizeof(struct file_data));
+	//uint32_t inode_num = ext2_open(&RAMFS_START, path, access);
+
+	// if filetype ext2 then...
+
+	fd->open = ext2_open;
+	fd->read = ext2_read;
+	fd->write = ext2_write;
+	fd->position = 0;
+
+
+	fd->filenum = n++; // allows file to be opened multiple times
+	fd->fileid = fd->open(&RAMFS_START, path, access);
+	fd->access = access;
 
 	// check already opened
-	if (!__get_open_file(fdp->filenum)) { 
-		list_add(&fdp->file_node, &open_files);
-		printk("Opened %s %d %d\n", path, fdp->filenum, fdp->fileid);
+	if (!__get_open_file(fd->filenum)) { 
+		list_add(&fd->file_node, &open_files.head);
+		spinlock_init(&fd->lock);
+		DEBUG("Opened %s %d %d\n", path, fd->filenum, fd->fileid);
 	}
+
 
 	// check if opening a file that doesn't exist
 	if (!file_exist(path) && __file_has_access(fdp, O_WRONLY) && __file_has_access(fdp, O_CREAT)) {
@@ -81,18 +105,24 @@ size_t file_open(char *path, int access) {
 
   }
 
-	return fdp->filenum;
+	spin_unlock(&open_files.lock);
+
+	return fd->filenum;
 }
 
 void __file_close(struct file_data* fd) {
+	spin_lock(&open_files.lock);
+	spinlock_deinit(&fd->lock);
 	list_del((struct list_head*)fd);
 	free(fd);
+	spin_unlock(&open_files.lock);
 }
 
 int file_close(uint32_t filenum) {
 	struct file_data *fd = __get_open_file(filenum);
-	if (!fd)
+	if (!fd) {
 		return 0;
+	}
 	__file_close(fd);
 	return 1;
 }
@@ -101,10 +131,11 @@ struct file_data* __get_open_file(uint32_t filenum) {
 	struct list_head *cur;
 	struct file_data *fd;
 
-	list_for_each(cur, &open_files) {
+	list_for_each(cur, &open_files.head) {
 		fd = (struct file_data*)cur;
-		if (fd->filenum == filenum)
+		if (fd->filenum == filenum) {
 			return fd;
+		}
 	}
 	return NULL;
 }
@@ -171,6 +202,7 @@ size_t file_seek(int filenum, size_t offset, int pos) {
 	return __file_seek(target, offset, pos);
 }
 
+
 // returns 1 if file exists, 0 other
 uint32_t file_exist(char *path) {
   return ext2_file_exist(&RAMFS_START,path);
@@ -180,6 +212,7 @@ uint32_t file_exist(char *path) {
 uint32_t file_create(char* path) {
   return ext2_file_create(&RAMFS_START, path);
 }
+
 
 
 void dir_ls(char* path) {
