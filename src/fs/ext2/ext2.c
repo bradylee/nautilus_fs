@@ -1,4 +1,3 @@
-#include <fs/fs.h>
 #include <fs/ext2/ext2.h>
 
 uint32_t ext2_open(uint8_t *device, char *path, int access) {
@@ -65,7 +64,6 @@ uint32_t ext2_file_exist(uint8_t *device, char *path) {
 	}
 	return 0;
 }
-
 
 uint32_t ext2_file_create(uint8_t *device, char *path) {
 	uint32_t found_inode = get_free_inode(device);
@@ -136,5 +134,4 @@ uint32_t add_to_dir(uint8_t *device, int dir_inode_number, int target_inode_numb
 				*(struct ext2_dir_entry_2 *)loc = new_entry;
 				return 1;
 }
-
 

@@ -21,5 +21,7 @@ __u32 get_inode_from_dir(void * fs, struct ext2_inode * dir, char * name);
 
 __u32 get_inode_by_path(void * fs, char * path);
 
+__u32 get_free_inode(void * fs);
+
 #endif
 

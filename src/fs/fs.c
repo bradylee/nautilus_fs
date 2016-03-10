@@ -25,8 +25,6 @@ void test_fs() {
 	DEBUG("Closing files...\n");
 	__iterate_opened(__file_close);
 	DEBUG("Done closing\n");
-	deinit_fs();
-	printk("Done\n");
 
   printk("-----------------------------------\n");
   file_create("/a");
@@ -37,6 +35,8 @@ void test_fs() {
   file_read(fn,buf,15);
   printk("buffer: %s size: %d\n",buf, ext2_get_file_size(get_inode_by_path(&RAMFS_START,"/a")));
 
+	deinit_fs();
+	printk("Done\n");
 }
 
 void init_fs(void) {
@@ -68,6 +68,15 @@ void __file_print(struct file_data* fd) {
 	printk("%d %d\n", fd->filenum, fd->fileid);
 }
 
+void __file_set_interface(struct file_int *fi, enum Filesystem fs) {
+	if (fs == ext2) {
+		fi->open = ext2_open;
+		fi->read = ext2_read;
+		fi->write = ext2_write;
+		fi->get_size = ext2_get_file_size;
+	}
+}
+
 size_t file_open(char *path, int access) {
 	static uint32_t n = 1;
 
@@ -77,16 +86,12 @@ size_t file_open(char *path, int access) {
 	//uint32_t inode_num = ext2_open(&RAMFS_START, path, access);
 
 	// if filetype ext2 then...
-
-	fd->open = ext2_open;
-	fd->read = ext2_read;
-	fd->write = ext2_write;
-	fd->position = 0;
-
+	__file_set_interface(&fd->interface, ext2);
 
 	fd->filenum = n++; // allows file to be opened multiple times
-	fd->fileid = fd->open(&RAMFS_START, path, access);
+	fd->fileid = fd->interface.open(&RAMFS_START, path, access);
 	fd->access = access;
+	fd->position = 0;
 
 	// check already opened
 	if (!__get_open_file(fd->filenum)) { 
@@ -95,15 +100,16 @@ size_t file_open(char *path, int access) {
 		DEBUG("Opened %s %d %d\n", path, fd->filenum, fd->fileid);
 	}
 
-
 	// check if opening a file that doesn't exist
-	if (!file_exist(path) && __file_has_access(fdp, O_WRONLY) && __file_has_access(fdp, O_CREAT)) {
+	/*
+	if (!file_exist(path) && __file_has_access(fd, O_WRONLY) && __file_has_access(fd, O_CREAT)) {
 		
 	}
 
 	if (file_exist(path)) {
 
   }
+	*/
 
 	spin_unlock(&open_files.lock);
 
@@ -148,7 +154,7 @@ size_t file_read(int filenum, char *buf, size_t num_bytes) {
 		return -1;
 	}
 
-	size_t n = target->read(target->fileid, buf, num_bytes, target->position);
+	size_t n = target->interface.read(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
 	//printk("n: %d pos: %d\n", n, target->position);
 	return n;
@@ -165,7 +171,7 @@ size_t file_write(int filenum, char *buf, size_t num_bytes) {
 		__file_seek(target, 0, 2);
 	}
 
-	size_t n = target->write(target->fileid, buf, num_bytes, target->position);
+	size_t n = target->interface.write(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
 	//printk("n: %d pos: %d\n", n, target->position);
 	return n;
@@ -175,14 +181,14 @@ int __file_has_access(struct file_data *fd, int access) {
 	return ((fd->access & access) == access);
 }
 
-size_t __file_seek(struct file_data *target, size_t offset, int pos) {
-	if(pos == 0) {
+size_t __file_seek(struct file_data *target, size_t offset, int whence) {
+	if(whence == 0) {
 		target->position = offset;
 	}
-	else if(pos == 1) {
+	else if(whence == 1) {
 		target->position += offset;
 	}
-	else if(pos == 2) {
+	else if(whence == 2) {
 		uint64_t size = ext2_get_file_size((uint32_t)target->filenum);
 		//printk("file size = %d\n",size);
 		target->position = size + offset-1;
@@ -194,12 +200,20 @@ size_t __file_seek(struct file_data *target, size_t offset, int pos) {
 }
 
 //pos = 0 -> beginning of file, 1 -> current position, 2 -> end of file
-size_t file_seek(int filenum, size_t offset, int pos) {
+size_t file_seek(int filenum, size_t offset, int whence) {
 	struct file_data *target = __get_open_file(filenum);
 	if (target == NULL) {
 		return -1;
 	}
-	return __file_seek(target, offset, pos);
+	return __file_seek(target, offset, whence);
+}
+
+size_t file_tell(int filenum) {
+	struct file_data *target = __get_open_file(filenum);
+	if (target == NULL) {
+		return -1;
+	}
+	return target->position; 
 }
 
 

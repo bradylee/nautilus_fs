@@ -1,5 +1,2 @@
-#obj-y += fs.o \
-	ext2/
-
 obj-$(NAUT_CONFIG_ENABLE_FILESYSTEM) += fs.o
 obj-$(NAUT_CONFIG_EXT2_FILESYSTEM_DRIVER) += ext2/
