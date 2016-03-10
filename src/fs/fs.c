@@ -1,6 +1,7 @@
 #include <fs/fs.h>
 
 void test_fs() {
+
 	init_fs();
 	printk("Opening files...\n");
 	uint32_t fn;
@@ -12,6 +13,18 @@ void test_fs() {
 	printk("Closing files...\n");
 	deinit_fs();
 	printk("Done\n");
+
+  printk("-----------------------------------\n");
+  file_create("/a");
+  fn = file_open("/a",O_RDWR);
+  file_write(fn, "Testing file /a", 15);
+  char * buf = malloc(15);
+  file_seek(fn,0,0);
+  file_read(fn,buf,15);
+  printk("buffer: %s size: %d\n",buf, ext2_get_file_size(get_inode_by_path(&RAMFS_START,"/a")));
+  
+  
+  
 }
 
 void init_fs(void) {
@@ -47,6 +60,7 @@ size_t file_open(char *path, int access) {
 	fdp->open = ext2_open;
 	fdp->read = ext2_read;
 	fdp->write = ext2_write;
+  fdp->position = 0;
 
 	fdp->filenum = n++; // allows file to be opened multiple times
 	fdp->fileid = fdp->open(&RAMFS_START, path, access);
@@ -57,6 +71,15 @@ size_t file_open(char *path, int access) {
 		list_add(&fdp->file_node, &open_files);
 		printk("Opened %s %d %d\n", path, fdp->filenum, fdp->fileid);
 	}
+
+	// check if opening a file that doesn't exist
+	if (!file_exist(path) && __file_has_access(fdp, O_WRONLY) && __file_has_access(fdp, O_CREAT)) {
+		
+	}
+
+	if (file_exist(path)) {
+
+  }
 
 	return fdp->filenum;
 }
@@ -148,17 +171,16 @@ size_t file_seek(int filenum, size_t offset, int pos) {
 	return __file_seek(target, offset, pos);
 }
 
-/*
- size_t file_append(int filenum,char * write_data, size_t num_bytes) {
-	 struct file_data *target = __get_open_file(filenum);
-	 uint32_t inode_num = target->filenum;
-	 size_t n = file_seek(filenum,0,2);
-	 n = ext2_write(inode_num, write_data, num_bytes,target->position);
-	 target->position += n;
-	 printk("n: %d pos: %d\n", n, target->position);
-	 return n;
- }
- */
+// returns 1 if file exists, 0 other
+uint32_t file_exist(char *path) {
+  return ext2_file_exist(&RAMFS_START,path);
+}
+
+// creates file with the given path
+uint32_t file_create(char* path) {
+  return ext2_file_create(&RAMFS_START, path);
+}
+
 
 void dir_ls(char* path) {
 	char* tempname;

@@ -105,7 +105,6 @@ char ** split_path(char * path) {
     for (char * slash = path; slash != NULL; slash = strchr(slash + 1, '/')) {
         num_slashes++;
     }
-
     // Copy out each piece by advancing two pointers (piece_start and slash).
     char ** parts = (char **) malloc(num_slashes*sizeof(char *));
     char * piece_start = path + 1;
@@ -115,12 +114,13 @@ char ** split_path(char * path) {
          slash = strchr(slash + 1, '/')) {
         int part_len = slash - piece_start;
         parts[i] = (char *) malloc((part_len + 1)*sizeof(char));
-        strncpy(parts[i], piece_start, part_len);
+				strncpy(parts[i], piece_start, part_len);
         piece_start = slash + 1;
         i++;
     }
     // Get the last piece.
     parts[i] = (char *) malloc((strlen(piece_start) + 1)*sizeof(char));
+		strcpy(parts[i]," ");
     strncpy(parts[i], piece_start, strlen(piece_start));
     return parts;
 }
@@ -190,11 +190,38 @@ __u32 get_inode_by_path(void * fs, char * path) {
     for(i = 1; i <= num_parts; i++){
 	//treat current inode as directory, and search for inode of next part
 	new_inode_num = get_inode_from_dir(fs,cur_inode,cur_part);
+	if (new_inode_num == 0) {
+			return 0;
+	}
 	cur_inode = get_inode(fs, new_inode_num);
 	cur_part = *(parts+i);
     }
     
     //final inode is the requested file. return its number
     return new_inode_num;
+}
+
+//Returns the inode number of the first free inode
+__u32 get_free_inode(void * fs) {
+	struct ext2_group_desc* bg = get_block_group(fs,1);	//get block group descriptor
+	__u8 * bitmap_byte = get_block(fs, bg->bg_inode_bitmap);	//get inode bitmap first byte
+	int bytes_checked = 0;
+	int bit;
+	__u8 cur_byte;
+
+	while(bytes_checked <1024) {		//cycle through bitmap
+		cur_byte = *bitmap_byte;
+		for(bit=0;bit<8;bit++) {
+			if(!(cur_byte & 0x01)) {
+				*bitmap_byte = *bitmap_byte | (0x01 << bit); //set the inode to taken
+				return (__u32)(bytes_checked*8+bit + 1); //first inode number is 1, not 0
+			}
+			cur_byte = cur_byte >> 1;
+		}
+		bitmap_byte++;
+		bytes_checked++;
+	}
+	return 0;
+
 }
 
