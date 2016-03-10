@@ -1,4 +1,4 @@
-#include <fs/vfs.h>
+#include <fs/fs.h>
 
 #define INFO(fmt, args...) printk("FILESYSTEM: " fmt, ##args)
 #define DEBUG(fmt, args...) printk("FILESYSTEM (DEBUG): " fmt, ##args)
@@ -57,6 +57,15 @@ void __file_print(struct file_data* fd) {
 	printk("%d %d\n", fd->filenum, fd->fileid);
 }
 
+void __file_set_interface(struct file_int *fi, enum Filesystem fs) {
+	if (fs == ext2) {
+		fi->open = ext2_open;
+		fi->read = ext2_read;
+		fi->write = ext2_write;
+		fi->get_size = ext2_get_file_size;
+	}
+}
+
 size_t file_open(char *path, int access) {
 	static uint32_t n = 1;
 
@@ -66,14 +75,12 @@ size_t file_open(char *path, int access) {
 	//uint32_t inode_num = ext2_open(&RAMFS_START, path, access);
 
 	// if filetype ext2 then...
-	ext2_set_file_op(fd->op);
-	//fd->op = ext2_file_options;
-	//fd->op->open = ext2_open;
-	//fd->op->read = ext2_read;
-	//fd->op->write = ext2_write;
+	__file_set_interface(&fd->interface, ext2);
+	//ext2_set_file_int(&fd->interface);
+	//fd->interface = &ext2_file_int;
 
 	fd->filenum = n++; // allows file to be opened multiple times
-	fd->fileid = fd->op->open(&RAMFS_START, path, access);
+	fd->fileid = fd->interface.open(&RAMFS_START, path, access);
 	fd->access = access;
 
 	// check already opened
@@ -126,7 +133,7 @@ size_t file_read(int filenum, char *buf, size_t num_bytes) {
 		return -1;
 	}
 
-	size_t n = target->op->read(target->fileid, buf, num_bytes, target->position);
+	size_t n = target->interface.read(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
 	//printk("n: %d pos: %d\n", n, target->position);
 	return n;
@@ -143,7 +150,7 @@ size_t file_write(int filenum, char *buf, size_t num_bytes) {
 		__file_seek(target, 0, 2);
 	}
 
-	size_t n = target->op->write(target->fileid, buf, num_bytes, target->position);
+	size_t n = target->interface.write(target->fileid, buf, num_bytes, target->position);
 	target->position += n;
 	//printk("n: %d pos: %d\n", n, target->position);
 	return n;
@@ -153,14 +160,14 @@ int __file_has_access(struct file_data *fd, int access) {
 	return ((fd->access & access) == access);
 }
 
-size_t __file_seek(struct file_data *target, size_t offset, int pos) {
-	if(pos == 0) {
+size_t __file_seek(struct file_data *target, size_t offset, int whence) {
+	if(whence == 0) {
 		target->position = offset;
 	}
-	else if(pos == 1) {
+	else if(whence == 1) {
 		target->position += offset;
 	}
-	else if(pos == 2) {
+	else if(whence == 2) {
 		uint64_t size = ext2_get_file_size((uint32_t)target->filenum);
 		//printk("file size = %d\n",size);
 		target->position = size + offset-1;
@@ -172,12 +179,20 @@ size_t __file_seek(struct file_data *target, size_t offset, int pos) {
 }
 
 //pos = 0 -> beginning of file, 1 -> current position, 2 -> end of file
-size_t file_seek(int filenum, size_t offset, int pos) {
+size_t file_seek(int filenum, size_t offset, int whence) {
 	struct file_data *target = __get_open_file(filenum);
 	if (target == NULL) {
 		return -1;
 	}
-	return __file_seek(target, offset, pos);
+	return __file_seek(target, offset, whence);
+}
+
+size_t file_tell(int filenum) {
+	struct file_data *target = __get_open_file(filenum);
+	if (target == NULL) {
+		return -1;
+	}
+	return target->position; 
 }
 
 /*

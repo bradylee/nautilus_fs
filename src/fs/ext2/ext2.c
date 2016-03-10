@@ -50,8 +50,11 @@ uint64_t ext2_get_file_size(int inode_number) {
 	return temp;
 }
 
-void ext2_set_file_op(struct file_operations *op) {
-	op->open = ext2_open;
-	op->read = ext2_read;
-	op->write = ext2_write;
+/*
+void ext2_set_file_int(struct file_int *fi) {
+	fi->open = ext2_open;
+	fi->read = ext2_read;
+	fi->write = ext2_write;
+	fi->get_size = ext2_get_file_size;
 }
+*/
