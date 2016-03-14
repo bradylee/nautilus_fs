@@ -14,25 +14,25 @@ void test_fs() {
 	init_fs();
 	DEBUG("Opening files...\n");
 	uint32_t fn;
-	fn = file_open("/readme", 1);
-	fn = file_open("/null", 1);
-	fn = file_open("/nothing", 1);
-	fn = file_open("/nothing", 1);
+	fn = open("/readme", 1);
+	fn = open("/null", 1);
+	fn = open("/nothing", 1);
+	fn = open("/nothing", 1);
 	DEBUG("Done opening\n");
 	DEBUG("Printing...\n");
-	__iterate_opened(__file_print);
+	iterate_opened(file_print);
 	DEBUG("Done printing\n");
 	DEBUG("Closing files...\n");
-	__iterate_opened(__file_close);
+	iterate_opened(__close);
 	DEBUG("Done closing\n");
 
   printk("-----------------------------------\n");
   file_create("/a");
-  fn = file_open("/a",O_RDWR);
-  file_write(fn, "Testing file /a", 15);
-  char * buf = malloc(15);
-  file_seek(fn,0,0);
-  file_read(fn,buf,15);
+  fn = open("/a",O_RDWR);
+  write(fn, "Testing file /a", 15);
+  char *buf = malloc(15);
+  lseek(fn,0,0);
+  read(fn,buf,15);
   printk("buffer: %s size: %d\n",buf, ext2_get_file_size(get_inode_by_path(&RAMFS_START,"/a")));
 
 	deinit_fs();
@@ -48,12 +48,12 @@ void init_fs(void) {
 
 void deinit_fs(void) {
 	INFO("Deiniting...\n");
-	__iterate_opened(__file_close);
+	iterate_opened(__close);
 	spinlock_deinit(&open_files.lock);
 	INFO("Done deiniting.\n");
 }
 
-void __iterate_opened(void (*callback)(struct file_data*)) {
+void iterate_opened(void (*callback)(struct file_data*)) {
 	struct list_head *cur;
 	struct list_head *temp;
 	struct file_data *fd;
@@ -64,11 +64,11 @@ void __iterate_opened(void (*callback)(struct file_data*)) {
 	}
 }
 
-void __file_print(struct file_data* fd) {
+void file_print(struct file_data* fd) {
 	printk("%d %d\n", fd->filenum, fd->fileid);
 }
 
-void __file_set_interface(struct file_int *fi, enum Filesystem fs) {
+void file_set_interface(struct file_int *fi, enum Filesystem fs) {
 	if (fs == ext2) {
 		fi->open = ext2_open;
 		fi->read = ext2_read;
@@ -77,46 +77,46 @@ void __file_set_interface(struct file_int *fi, enum Filesystem fs) {
 	}
 }
 
-size_t file_open(char *path, int access) {
+int open(char *path, int access) {
 	static uint32_t n = 1;
 
 	spin_lock(&open_files.lock);
 
 	struct file_data *fd = malloc(sizeof(struct file_data));
-	//uint32_t inode_num = ext2_open(&RAMFS_START, path, access);
 
-	// if filetype ext2 then...
-	__file_set_interface(&fd->interface, ext2);
+	// if filesystem of path is ext2 then...
+	file_set_interface(&fd->interface, ext2);
+
+	if (file_exists(path)) {
+		fd->fileid = fd->interface.open(&RAMFS_START, path, access);
+	}
+	else if (file_has_access(fd, O_WRONLY) && file_has_access(fd, O_CREAT)) {
+		int id = file_create(path);
+		if (!id)
+			return -1;
+		DEBUG("Created %s %d\n", path, id);
+		fd->fileid = id;
+	}
+	else {
+		return -1;
+	}
 
 	fd->filenum = n++; // allows file to be opened multiple times
-	fd->fileid = fd->interface.open(&RAMFS_START, path, access);
 	fd->access = access;
 	fd->position = 0;
 
 	// check already opened
-	if (!__get_open_file(fd->filenum)) { 
+	if (!file_get_open(fd->filenum)) { 
 		list_add(&fd->file_node, &open_files.head);
 		spinlock_init(&fd->lock);
 		DEBUG("Opened %s %d %d\n", path, fd->filenum, fd->fileid);
 	}
 
-	// check if opening a file that doesn't exist
-	/*
-	if (!file_exist(path) && __file_has_access(fd, O_WRONLY) && __file_has_access(fd, O_CREAT)) {
-		
-	}
-
-	if (file_exist(path)) {
-
-  }
-	*/
-
 	spin_unlock(&open_files.lock);
-
 	return fd->filenum;
 }
 
-void __file_close(struct file_data* fd) {
+void __close(struct file_data* fd) {
 	spin_lock(&open_files.lock);
 	spinlock_deinit(&fd->lock);
 	list_del((struct list_head*)fd);
@@ -124,16 +124,16 @@ void __file_close(struct file_data* fd) {
 	spin_unlock(&open_files.lock);
 }
 
-int file_close(uint32_t filenum) {
-	struct file_data *fd = __get_open_file(filenum);
+int close(uint32_t filenum) {
+	struct file_data *fd = file_get_open(filenum);
 	if (!fd) {
 		return 0;
 	}
-	__file_close(fd);
+	__close(fd);
 	return 1;
 }
 
-struct file_data* __get_open_file(uint32_t filenum) {
+struct file_data* file_get_open(uint32_t filenum) {
 	struct list_head *cur;
 	struct file_data *fd;
 
@@ -146,11 +146,11 @@ struct file_data* __get_open_file(uint32_t filenum) {
 	return NULL;
 }
 
-size_t file_read(int filenum, char *buf, size_t num_bytes) {
-	struct file_data *target = __get_open_file(filenum);
+ssize_t read(int filenum, char *buf, size_t num_bytes) {
+	struct file_data *target = file_get_open(filenum);
 
 	//  RDONLY or RDWR will return the same
-	if (target == NULL || !__file_has_access(target, O_RDONLY)) {
+	if (target == NULL || !file_has_access(target, O_RDONLY)) {
 		return -1;
 	}
 
@@ -160,15 +160,15 @@ size_t file_read(int filenum, char *buf, size_t num_bytes) {
 	return n;
 }
 
-size_t file_write(int filenum, char *buf, size_t num_bytes) {
-	struct file_data *target = __get_open_file(filenum);
+ssize_t write(int filenum, char *buf, size_t num_bytes) {
+	struct file_data *target = file_get_open(filenum);
 
 	//  WRONLY or RDWR will return the same
-	if (target == NULL || !__file_has_access(target, O_WRONLY)) {
+	if (target == NULL || !file_has_access(target, O_WRONLY)) {
 		return -1;
 	}
-	if (__file_has_access(target, O_APPEND)) {
-		__file_seek(target, 0, 2);
+	if (file_has_access(target, O_APPEND)) {
+		__lseek(target, 0, 2);
 	}
 
 	size_t n = target->interface.write(target->fileid, buf, num_bytes, target->position);
@@ -177,11 +177,11 @@ size_t file_write(int filenum, char *buf, size_t num_bytes) {
 	return n;
 }
 
-int __file_has_access(struct file_data *fd, int access) {
+int file_has_access(struct file_data *fd, int access) {
 	return ((fd->access & access) == access);
 }
 
-size_t __file_seek(struct file_data *target, size_t offset, int whence) {
+ssize_t __lseek(struct file_data *target, size_t offset, int whence) {
 	if(whence == 0) {
 		target->position = offset;
 	}
@@ -200,26 +200,25 @@ size_t __file_seek(struct file_data *target, size_t offset, int whence) {
 }
 
 //pos = 0 -> beginning of file, 1 -> current position, 2 -> end of file
-size_t file_seek(int filenum, size_t offset, int whence) {
-	struct file_data *target = __get_open_file(filenum);
+ssize_t lseek(int filenum, size_t offset, int whence) {
+	struct file_data *target = file_get_open(filenum);
 	if (target == NULL) {
 		return -1;
 	}
-	return __file_seek(target, offset, whence);
+	return __lseek(target, offset, whence);
 }
 
-size_t file_tell(int filenum) {
-	struct file_data *target = __get_open_file(filenum);
+ssize_t tell(int filenum) {
+	struct file_data *target = file_get_open(filenum);
 	if (target == NULL) {
 		return -1;
 	}
 	return target->position; 
 }
 
-
 // returns 1 if file exists, 0 other
-uint32_t file_exist(char *path) {
-  return ext2_file_exist(&RAMFS_START,path);
+int file_exists(char *path) {
+  return ext2_file_exists(&RAMFS_START,path);
 }
 
 // creates file with the given path
@@ -227,9 +226,7 @@ uint32_t file_create(char* path) {
   return ext2_file_create(&RAMFS_START, path);
 }
 
-
-
-void dir_ls(char* path) {
+void directory_list(char* path) {
 	char* tempname;
 	struct ext2_dir_entry_2* directory_entry;
 	struct ext2_inode * dir = get_inode(&RAMFS_START, get_inode_by_path(&RAMFS_START,path));

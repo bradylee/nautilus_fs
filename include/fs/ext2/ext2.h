@@ -6,14 +6,15 @@
 
 static uint8_t EOF = 255;
 
-uint32_t ext2_open(uint8_t *device, char *path, int access);
-size_t ext2_read(int inode_number, char *buf, size_t num_bytes, size_t offset);
-size_t ext2_write(int inode_number, char *buf, size_t num_bytes, size_t offset);
+int ext2_open(uint8_t *device, char *path, int access);
+ssize_t ext2_read(int inode_number, char *buf, size_t num_bytes, size_t offset);
+ssize_t ext2_write(int inode_number, char *buf, size_t num_bytes, size_t offset);
 
-uint64_t ext2_get_file_size(int inode_number);
-uint32_t ext2_file_exist(uint8_t *device, char *path);
+size_t ext2_get_file_size(int inode_number);
+int ext2_file_exists(uint8_t *device, char *path);
 uint32_t ext2_file_create(uint8_t *device, char *path);
-uint32_t add_to_dir(uint8_t *device, int dir_inode_number, int target_inode_number, char* name, uint8_t file_type);
+uint32_t ext2_file_delete(uint8_t *device, char *path);
+uint32_t directory_add_file(uint8_t *device, int dir_inode_number, int target_inode_number, char* name, uint8_t file_type);
 
 #endif
 
