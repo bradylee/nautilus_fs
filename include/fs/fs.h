@@ -18,6 +18,13 @@
 
 enum Filesystem {ext2, fat32};
 
+struct filesystem {
+	char *path;
+	struct block_dev *device;
+	enum Filesystem fs_type;
+};
+
+
 static struct {
 	struct list_head head;
 	spinlock_t lock;
@@ -25,12 +32,12 @@ static struct {
 
 struct file_int {
   int (*open)(uint8_t*, char*, int);
-  ssize_t (*read)(int, char*, size_t, size_t);
-  ssize_t (*write)(int, char*, size_t, size_t);
-  size_t (*get_size)(int);
+  ssize_t (*read)(uint8_t*, int, char*, size_t, size_t);
+  ssize_t (*write)(uint8_t*, int, char*, size_t, size_t);
+  size_t (*get_size)(uint8_t*, int);
 };
 
-struct file_data {
+struct file {
 	struct list_head file_node;
 	struct file_int interface;
 	size_t position;
@@ -40,11 +47,18 @@ struct file_data {
 	spinlock_t lock;
 };
 
-struct filesystem {
-	char *path;
-	struct block_dev *device;
-	enum Filesystem fs_type;
-};
+static inline int file_open(struct file *fd, char *path, int access) {
+	return fd->interface.open(&RAMFS_START, path, access);
+}
+static inline ssize_t file_read(struct file *fd, char *buf, size_t num_bytes) {
+	return fd->interface.read(&RAMFS_START, fd->fileid, buf, num_bytes, fd->position);
+}
+static inline ssize_t file_write(struct file *fd, char *buf, size_t num_bytes) {
+	return fd->interface.write(&RAMFS_START, fd->fileid, buf, num_bytes, fd->position);
+}
+static inline int file_get_size(struct file *fd) {
+	return fd->interface.get_size(&RAMFS_START, fd->fileid);
+}
 
 void mount(char *source, char *target);
 void umount(char *target);
@@ -53,9 +67,9 @@ void test_fs(void);
 void init_fs(void);
 void deinit_fs(void);
 
-void file_set_interface(struct file_int *, enum Filesystem);
-struct file_data* file_get_open(uint32_t filenum);
-void iterate_opened(void (*callback)(struct file_data*));
+void set_file_interface(struct file_int *fi, enum Filesystem);
+struct file* get_open_file(uint32_t filenum);
+void iterate_opened(void (*callback)(struct file *fd));
 
 /*
 int file_open(char *path, int access);
@@ -73,16 +87,16 @@ ssize_t write(int filenum, char *buf, size_t num_bytes);
 ssize_t lseek(int filenum, size_t offset, int whence);
 ssize_t tell(int filenum);
 
-void __close(struct file_data*);
-ssize_t __lseek(struct file_data*, size_t offset, int whence);
+void __close(struct file *fd);
+ssize_t __lseek(struct file *fd, size_t offset, int whence);
 
 int file_exists(char *path);
 uint32_t file_create(char* path);
-int file_has_access(struct file_data*, int access);
+int file_has_access(struct file *fd, int access);
 
 // mostly for debugging
-void file_print(struct file_data*);
+void file_print(struct file *fd);
 
-void directory_list(char* path);
+void directory_list(char *path);
 
 #endif
