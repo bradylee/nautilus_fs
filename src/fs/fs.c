@@ -27,13 +27,20 @@ void test_fs() {
 	DEBUG("Done closing\n");
 
   printk("-----------------------------------\n");
-  file_create("/a");
-  fn = file_open("/a",O_RDWR);
-  file_write(fn, "Testing file /a", 15);
-  char * buf = malloc(15);
-  file_seek(fn,0,0);
-  file_read(fn,buf,15);
-  printk("buffer: %s size: %d\n",buf, ext2_get_file_size(get_inode_by_path(&RAMFS_START,"/a")));
+	fn = file_open("/large_test_file3", O_RDWR);
+	fn = file_open("/large_test_file4", O_RDWR);
+	fn = file_open("/large_test_file", O_RDWR);
+	file_seek(fn,EXT2_MIN_BLOCK_SIZE*12,0);
+	char* read_buf = malloc(EXT2_MIN_BLOCK_SIZE*12);
+	char* write_buf = "****Testing****";
+	int result = file_write(fn,write_buf, strlen(write_buf));
+	printk("Write1: \n%d\n", result);
+	file_seek(fn,EXT2_MIN_BLOCK_SIZE*11,0);
+	result = file_read(fn,read_buf,EXT2_MIN_BLOCK_SIZE*2);
+	printk("Read1: \n%s \n%d\n",read_buf, result);
+
+	printk("\nGet: %d\n", get_inode_by_path(&RAMFS_START, "/test1"));
+
 
 	deinit_fs();
 	printk("Done\n");
@@ -199,7 +206,7 @@ size_t __file_seek(struct file_data *target, size_t offset, int whence) {
 	return target->position;
 }
 
-//pos = 0 -> beginning of file, 1 -> current position, 2 -> end of file
+//whence = 0 -> beginning of file, 1 -> current position, 2 -> end of file
 size_t file_seek(int filenum, size_t offset, int whence) {
 	struct file_data *target = __get_open_file(filenum);
 	if (target == NULL) {

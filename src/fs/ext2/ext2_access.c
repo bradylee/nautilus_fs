@@ -114,14 +114,15 @@ char ** split_path(char * path) {
          slash = strchr(slash + 1, '/')) {
         int part_len = slash - piece_start;
         parts[i] = (char *) malloc((part_len + 1)*sizeof(char));
-				strncpy(parts[i], piece_start, part_len);
+	strcpy(parts[i],"");
+	strncpy(parts[i], piece_start, part_len);
         piece_start = slash + 1;
         i++;
     }
     // Get the last piece.
     parts[i] = (char *) malloc((strlen(piece_start) + 1)*sizeof(char));
-		strcpy(parts[i]," ");
-    strncpy(parts[i], piece_start, strlen(piece_start));
+    //strncpy(parts[i], piece_start, strlen(piece_start));
+    strcpy(parts[i],piece_start);
     return parts;
 }
 
@@ -183,6 +184,7 @@ __u32 get_inode_by_path(void * fs, char * path) {
     //use number of slashes to get number of parts in path as in split_path()
     int num_parts = 0;
     for (char * slash = path; slash != NULL; slash = strchr(slash + 1, '/')) {
+	//printk("Path: %s\n",parts[num_parts]);
         num_parts++;
     }
     
@@ -224,4 +226,6 @@ __u32 get_free_inode(void * fs) {
 	return 0;
 
 }
+
+
 
