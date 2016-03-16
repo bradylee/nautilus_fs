@@ -13,18 +13,21 @@ void test_fs() {
 
 	init_fs();
 	DEBUG("Opening files...");
-	uint32_t fn;
+  char *buf;
+	int fn;
 	int num_parts = 0;
 	char **parts = split_path("/readme", &num_parts);
 	int i;
 	DEBUG("NUM_PARTS %d", num_parts);
 	for (i = 0; i < num_parts; i++) {
-		DEBUG("%s", parts[i]);
+		DEBUG("Part %d: %s", i, parts[i]);
 	}
-	fn = open("/readme", 1);
-	fn = open("/null", 1);
-	fn = open("/nothing", 1);
-	fn = open("/nothing", 1);
+
+	/*
+	fn = open("/readme", O_RDWR);
+	fn = open("/null", O_RDWR);
+	fn = open("/nothing", O_RDWR);
+	fn = open("/nothing", O_RDWR);
 	DEBUG("Done opening");
 	DEBUG("Printing...");
 	iterate_opened(file_print);
@@ -32,15 +35,42 @@ void test_fs() {
 	DEBUG("Closing files...");
 	iterate_opened(__close);
 	DEBUG("Done closing");
+	DEBUG("");
+	*/
 
-  printk("-----------------------------------\n");
-  file_create("/a");
-  fn = open("/a",O_RDWR);
-  write(fn, "Testing file /a", 15);
-  char *buf = malloc(15);
-  lseek(fn,0,0);
-  read(fn,buf,15);
-  printk("buffer: %s size: %d\n",buf, ext2_get_file_size(&RAMFS_START, get_inode_by_path(&RAMFS_START,"/a")));
+	/*
+	buf = malloc(15);
+	DEBUG("FILE CREATE TEST");
+	char path[] = "/a";
+	DEBUG("Creating file %d", file_create(path));
+  DEBUG("Wrote %d", write(fn, "Testing file /a", 15));
+	DEBUG("Seeking...");
+  lseek(fn, 0, 0);
+	DEBUG("Read %d", read(fn, buf, 15));
+	int inum = get_inode_by_path(&RAMFS_START, path);
+	DEBUG("Inode %d", inum); 
+	DEBUG("Size %d", ext2_get_file_size(&RAMFS_START, inum)); 
+	DEBUG("Done creating");
+	DEBUG("");
+	free(buf);
+	*/
+
+	DEBUG("FILE REMOVE TEST");
+	DEBUG("%d", get_block_size(&RAMFS_START));
+	uint32_t rootnum = get_inode_by_path(&RAMFS_START, "/");
+	DEBUG("Root inode %d", rootnum);
+	fn = open("/", 1);
+	//size_t rootsize = ext2_get_directory_size(&RAMFS_START, rootnum);
+	size_t rootsize = 1024;
+	//DEBUG("Root dentry size %d", rootsize);
+	buf = malloc(1024);
+	DEBUG("Read %d", read(fn, buf, rootsize));
+	char path[] = "/readme";
+	DEBUG("Removing file %d", ext2_file_delete(&RAMFS_START, path));
+	DEBUG("Removing file %d", ext2_file_delete(&RAMFS_START, path));
+	//DEBUG("Root dentry size %d", ext2_get_directory_size(&RAMFS_START, rootnum));
+	//DEBUG("Removing file %d", ext2_file_delete(&RAMFS_START, path));
+	//DEBUG("Root dentry size %d", ext2_get_file_size(&RAMFS_START, rootnum));
 
 	deinit_fs();
 	DEBUG("Done");
@@ -181,9 +211,7 @@ ssize_t write(int filenum, char *buf, size_t num_bytes) {
 	}
 
 	size_t n = file_write(fd, buf, num_bytes);
-	//size_t n = fd->interface.write(&RAMFS_START, fd->fileid, buf, num_bytes, fd->position);
 	fd->position += n;
-	//printk("n: %d pos: %d\n", n, fd->position);
 	return n;
 }
 
