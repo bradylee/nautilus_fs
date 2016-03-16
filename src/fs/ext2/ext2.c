@@ -36,9 +36,9 @@ ssize_t ext2_read(uint8_t *fs, int inode_number, char *buf, size_t num_bytes,siz
 	uint8_t * cur = blocks + offset_remainder;
 	int i = 0;
 	//If trying to read past the first 12 blocks, end early
-	if ((block_offset + blocks_to_read + (remainder_to_read != 0)) >=12) {
-		if(block_offset < 12) {
-			blocks_to_read = 11-block_offset;
+	if ((block_offset + blocks_to_read + (remainder_to_read != 0)) >= NUM_DATA_BLOCKS) {
+		if (block_offset < NUM_DATA_BLOCKS) {
+			blocks_to_read = NUM_DATA_BLOCKS - block_offset -1;
 		}
 		else {
 			blocks_to_read = 0;
@@ -48,7 +48,8 @@ ssize_t ext2_read(uint8_t *fs, int inode_number, char *buf, size_t num_bytes,siz
 	}
 	printk("read info: %d %d %d %d %d\n", block_offset, offset_remainder, bytes_from_first, blocks_to_read, remainder_to_read);
 	//Read to end of first partial block
-	while (i<bytes_from_first && *cur != 0x0a) {		
+	while (i<bytes_from_first && *cur != ENDFILE) {		
+		DEBUG("EXT2 READ: char %d %c", *cur, *cur);
 		buf[total_bytes_read] = *cur;		
 		i++;
 		total_bytes_read++;
@@ -59,7 +60,7 @@ ssize_t ext2_read(uint8_t *fs, int inode_number, char *buf, size_t num_bytes,siz
 		block_offset++;
 		cur = (char*)(get_block(&RAMFS_START,inode_pointer->i_block[block_offset]));
 		i = 0;	
-		while (i<get_block_size(fs) && *cur != 0x0a) {		
+		while (i<get_block_size(fs) && *cur != ENDFILE) {		
 			buf[total_bytes_read] = *cur;		
 			i++;
 			cur++;
@@ -71,7 +72,7 @@ ssize_t ext2_read(uint8_t *fs, int inode_number, char *buf, size_t num_bytes,siz
 	block_offset++;
 	cur = (char*)(get_block(&RAMFS_START,inode_pointer->i_block[block_offset]));
 	//Read last partial block
-	while (i<remainder_to_read && *cur != 0x0a) {			
+	while (i < remainder_to_read && *cur != ENDFILE) {			
 		//printk("Reading Block: %d\n",block_offset);
 		buf[total_bytes_read] = *cur;		
 		i++;
@@ -112,8 +113,8 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 
 	//If trying to write past the first 12 blocks, end early
 	if ((block_offset + blocks_to_write + (remainder_to_write != 0)) >=12) {
-		if(block_offset < 12) {
-			blocks_to_write = 11-block_offset;
+		if (block_offset < NUM_DATA_BLOCKS) {
+			blocks_to_write = NUM_DATA_BLOCKS - block_offset - 1;
 		}
 		else {
 			blocks_to_write = 0;
@@ -125,7 +126,7 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 
 	//Write to end of first partial block
 	while (total_bytes_written<bytes_from_first) {		
-		if(*cur == 0x0A && !end_flag) {
+		if(*cur == ENDFILE && !end_flag) {
 			end_flag = 1;
 			end_bytes = num_bytes-total_bytes_written;
 		}
@@ -139,7 +140,7 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 		cur = (char*)(get_block(&RAMFS_START,inode_pointer->i_block[block_offset]));
 		i = 0;	
 		while (i<get_block_size(fs)) {		
-			if(*cur == 0x0A && !end_flag) {
+			if(*cur == ENDFILE && !end_flag) {
 				end_flag = 1;
 				end_bytes = num_bytes-total_bytes_written;
 			}
@@ -156,7 +157,7 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 	//Write last partial block
 	while (i<remainder_to_write) {			
 		//printk("Writing Block: %d\n",block_offset);
-		if(*cur == 0x0A && !end_flag) {
+		if(*cur == ENDFILE && !end_flag) {
 			end_flag = 1;
 			end_bytes = num_bytes-total_bytes_written;
 		}
@@ -167,7 +168,7 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 	}
 	DEBUG("Writing reached end %d", end_flag);
 	if(end_flag) {
-		*cur = 0x0A;
+		*cur = ENDFILE;
 		inode_pointer->i_size += end_bytes;
 	}
 	return total_bytes_written;
@@ -175,9 +176,9 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 
 size_t ext2_get_size(uint8_t *fs, int inum) {
 	struct ext2_inode *inode = get_inode(fs, inum);	
-	if (inode->i_mode == EXT2_S_IFREG)
+	if (ext2_inode_has_mode(inode, EXT2_S_IFREG))
 		return ext2_get_file_size(fs, inum);
-	if (inode->i_mode == EXT2_S_IFDIR)
+	if (ext2_inode_has_mode(inode, EXT2_S_IFDIR))
 		return ext2_get_dir_size(fs, inum);
 	return 0;
 }
@@ -191,18 +192,26 @@ size_t ext2_get_file_size(uint8_t *fs, int inum) {
 }
 
 size_t ext2_get_dir_size(uint8_t *fs, int inum) {
-	struct ext2_inode *inode = get_inode(fs, inum);	
-	void *block = get_block(fs, inode->i_block[0]);
+	struct ext2_inode *dir = get_inode(fs, inum);
+	void *block = get_block(fs, dir->i_block[0]);
+	ssize_t blocksize = get_block_size(fs);
+	ssize_t new_blocksize = 0;
+
+	// find target dentry
 	struct ext2_dir_entry_2 *dentry = (struct ext2_dir_entry_2 *)block;
+	struct ext2_dir_entry_2 *target = NULL;
+	struct ext2_dir_entry_2 *prev = NULL;
 	int count = 0;
-	//while (dentry->inode) {
-	while (++count < 15) {
-		DEBUG("Dir Remove: dentry %p, inode %d, length %d", dentry, dentry->inode, dentry->rec_len);
+	blocksize -= dentry-> rec_len;
+	while (blocksize > 0) { 
 		dentry = (struct ext2_dir_entry_2*)((uint8_t*)dentry + dentry->rec_len);
+		new_blocksize = blocksize - dentry->rec_len;
+		if (new_blocksize <= 0) {
+			return blocksize + ext2_dentry_find_len(dentry);
+		}
+		blocksize = new_blocksize;
 	}
-	size_t size = (uint64_t)dentry - (uint64_t)block; 
-	DEBUG("Dir %d size is %d", inum, size);
-	return size;
+	return 0;
 }
 
 int ext2_file_exists(uint8_t *fs, char *path) {
@@ -213,7 +222,7 @@ int ext2_file_exists(uint8_t *fs, char *path) {
 // return new inode number; 0 if failed
 uint32_t ext2_file_create(uint8_t *fs, char *path) {
 	uint32_t free_inode = alloc_inode(fs);
-	DEBUG("Allocated %d", free_inode);
+	DEBUG("EXT2 CREATE: Allocated node %d", free_inode);
 
 	if (free_inode) {
 		struct ext2_inode *inode_pointer = get_inode(fs, free_inode);
@@ -322,7 +331,7 @@ int ext2_file_delete(uint8_t *fs, char *path) {
 
 uint16_t ext2_dentry_find_len(struct ext2_dir_entry_2 *dentry) {
 	uint16_t len = (uint16_t)(sizeof(dentry->inode) + sizeof(dentry->name_len) + sizeof(dentry->file_type) + dentry->name_len + sizeof(uint16_t));
-	DEBUG("Dentry Find Len: %s", dentry->name);
+	//DEBUG("Dentry Find Len: %s", dentry->name);
 	return (len += (DENTRY_ALIGN - len % DENTRY_ALIGN));
 }
 
@@ -335,13 +344,32 @@ int ext2_dir_add_file(uint8_t *fs, int dir_inum, int target_inum, char *name, ui
 	new_entry.name_len = (uint8_t) strlen(name);
 	new_entry.file_type = file_type;
 	strcpy(new_entry.name, name);
-	new_entry.rec_len = (uint16_t)(sizeof(new_entry.inode) + sizeof(new_entry.name_len) + sizeof(new_entry.file_type) + strlen(name) + sizeof(uint16_t));
-	DEBUG("Dir Add: %s, reclen %d", new_entry.rec_len);
+	new_entry.rec_len = ext2_dentry_find_len(&new_entry);
+	dir->i_size+= new_entry.rec_len;
+	//new_entry.rec_len = (uint16_t)(sizeof(new_entry.inode) + sizeof(new_entry.name_len) + sizeof(new_entry.file_type) + strlen(name) + sizeof(uint16_t));
+	DEBUG("Dir Add: %s, reclen %d", name, new_entry.rec_len);
 
-	size_t dir_size = ext2_get_dir_size(fs, dir_inum);
-	void *block = get_block(fs, dir->i_block[0]) + dir_size;
-	*(struct ext2_dir_entry_2 *)block = new_entry;
-	dir->i_size += dir_size; 
+	void *block = get_block(fs, dir->i_block[0]);
+	ssize_t blocksize = get_block_size(fs);
+
+	// iterate to last dentry
+	struct ext2_dir_entry_2 *dentry = (struct ext2_dir_entry_2 *)block;
+	blocksize -= dentry-> rec_len;
+	while (blocksize > 0) { 
+		dentry = (struct ext2_dir_entry_2*)((uint8_t*)dentry + dentry->rec_len);
+		blocksize -= dentry->rec_len;
+	}
+
+	// adjust rec_lens
+	uint16_t last_len = ext2_dentry_find_len(dentry);
+	new_entry.rec_len = dentry->rec_len - last_len; 
+	dentry->rec_len = last_len;
+
+	// place entry
+	// TODO: check new entry fits
+	void *dst = (void*)((uint8_t*)dentry + last_len);
+	DEBUG("DIR ADD: Block at %p, place at %p", block, dst);
+	*(struct ext2_dir_entry_2 *)dst = new_entry;
 	return 1;
 }
 

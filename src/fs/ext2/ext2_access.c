@@ -120,7 +120,9 @@ uint32_t get_inode_from_dir(void *fs, struct ext2_inode *dir, char *name) {
 	//scan only valid files in dentry
 	//while(dentry->inode){
 	ssize_t blocksize = get_block_size(fs) - dentry->rec_len;
-	while(blocksize > 0) {
+	int count = 0;
+	//while(blocksize > 0) {
+	while(++count < 20) {
 		int i;
 		tempname = (char*)malloc(dentry->name_len*sizeof(char));
 		//copy file name to temp name, then null terminate it
@@ -131,6 +133,7 @@ uint32_t get_inode_from_dir(void *fs, struct ext2_inode *dir, char *name) {
 
 		//if there is a match, return the inode number
 		DEBUG("INODE DIR: name %s, tempname %s", name, tempname);
+		DEBUG("INODE DIR: blocksize %d, reclen %d", blocksize, dentry->rec_len);
 		if(strcmp(name,tempname) ==0){
 			free((void*)tempname);
 			return dentry->inode;

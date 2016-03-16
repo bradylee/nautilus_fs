@@ -10,17 +10,9 @@
 #endif
 
 void test_fs() {
-
 	init_fs();
   char *buf;
 	int fn;
-	int num_parts = 0;
-	char **parts = split_path("/readme", &num_parts);
-	int i;
-	DEBUG("NUM_PARTS %d", num_parts);
-	for (i = 0; i < num_parts; i++) {
-		DEBUG("Part %d: %s", i, parts[i]);
-	}
 
 	/*
 	DEBUG("Opening files...");
@@ -38,23 +30,35 @@ void test_fs() {
 	DEBUG("");
 	*/
 
-	/*
-	buf = malloc(15);
-	DEBUG("FILE CREATE TEST");
-	char path[] = "/a";
-	DEBUG("Creating file %d", file_create(path));
-  DEBUG("Wrote %d", write(fn, "Testing file /a", 15));
-	DEBUG("Seeking...");
-  lseek(fn, 0, 0);
+	char path1[] = "/null";
+	buf = malloc(50);
+	fn = open(path1, O_RDWR);
 	DEBUG("Read %d", read(fn, buf, 15));
-	int inum = get_inode_by_path(&RAMFS_START, path);
-	DEBUG("Inode %d", inum); 
-	DEBUG("Size %d", ext2_get_file_size(&RAMFS_START, inum)); 
-	DEBUG("Done creating");
-	DEBUG("");
+	DEBUG("Text %s", buf);
+	DEBUG("Seeking %d", lseek(fn, 0, 0));
+	DEBUG("Write %d", write(fn, "jjjije\nifjeiffdfdfdfdfj", 15));
+	DEBUG("Seeking %d", lseek(fn, 0, 0));
+	DEBUG("Read %d", read(fn, buf, 15));
+	DEBUG("Text %s", buf);
+
+	/*
+	char path2[] = "/a";
+	DEBUG("FILE CREATE TEST");
+	DEBUG("Creating file %d", file_create(path2));
+	fn = open(path2, O_RDWR);
+  DEBUG("Wrote %d", write(fn, "Testing file /a", 15));
+	DEBUG("Seeking %d", lseek(fn, 0, 0));
+	DEBUG("Read %d", read(fn, buf, 15));
+	DEBUG("Read %s", buf);
+	//int inum = get_inode_by_path(&RAMFS_START, path);
+	//DEBUG("Inode %d", inum); 
+	//DEBUG("Size %d", ext2_get_file_size(&RAMFS_START, inum)); 
+	//DEBUG("Done creating");
+	//DEBUG("");
 	free(buf);
 	*/
 
+	/*
 	DEBUG("FILE REMOVE TEST");
 	DEBUG("%d", get_block_size(&RAMFS_START));
 	uint32_t rootnum = get_inode_by_path(&RAMFS_START, "/");
@@ -63,9 +67,10 @@ void test_fs() {
 	size_t rootsize = 1024;
 	buf = malloc(1024);
 	DEBUG("Read %d", read(fn, buf, rootsize));
-	char path[] = "/readme";
+	path = "/readme";
 	DEBUG("Removing file %d", ext2_file_delete(&RAMFS_START, path));
 	DEBUG("Removing file %d", ext2_file_delete(&RAMFS_START, path));
+	*/
 	
 	/*
   printk("-----------------------------------\n");
