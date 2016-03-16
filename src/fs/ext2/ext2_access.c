@@ -111,20 +111,21 @@ struct ext2_inode* get_root_dir(void * fs) {
 // that file inside that directory, or 0 if it doesn't exist there.
 // 
 // name should be a single component: "foo.txt", not "/files/foo.txt".
-uint32_t get_inode_from_dir(void * fs, struct ext2_inode * dir, char * name) {
-	char* tempname;
-	struct ext2_dir_entry_2* directory;
+uint32_t get_inode_from_dir(void *fs, struct ext2_inode *dir, char *name) {
+	char *tempname;
 
 	//get pointer to block where directory entries reside using inode of directory
-	directory = (struct ext2_dir_entry_2*)get_block(fs,dir->i_block[0]);
+	struct ext2_dir_entry_2* dentry = (struct ext2_dir_entry_2*)get_block(fs,dir->i_block[0]);
 
-	//scan only valid files in directory
-	while(directory->inode){
+	//scan only valid files in dentry
+	//while(dentry->inode){
+	ssize_t blocksize = get_block_size(fs) - dentry->rec_len;
+	while(blocksize > 0) {
 		int i;
-		tempname = (char*)malloc(directory->name_len*sizeof(char));
+		tempname = (char*)malloc(dentry->name_len*sizeof(char));
 		//copy file name to temp name, then null terminate it
-		for(i = 0; i<directory->name_len;i++){
-			tempname[i] = directory->name[i];
+		for(i = 0; i<dentry->name_len;i++){
+			tempname[i] = dentry->name[i];
 		}
 		tempname[i] = '\0';
 
@@ -132,10 +133,11 @@ uint32_t get_inode_from_dir(void * fs, struct ext2_inode * dir, char * name) {
 		DEBUG("INODE DIR: name %s, tempname %s", name, tempname);
 		if(strcmp(name,tempname) ==0){
 			free((void*)tempname);
-			return directory->inode;
+			return dentry->inode;
 		}
-		//else, go to next directory entry 
-		directory = (struct ext2_dir_entry_2*)((void*)directory+directory->rec_len);
+		//else, go to next dentry entry 
+		dentry = (struct ext2_dir_entry_2*)((void*)dentry+dentry->rec_len);
+		blocksize -= dentry->rec_len;
 
 		free((void*)tempname);
 	}

@@ -270,7 +270,6 @@ int ext2_dir_remove_file(uint8_t *device, int dir_inum, int target_inum) {
 
 	if (is_target_end) {
 		prev->rec_len += target->rec_len;
-		*(uint32_t*)target = 0;
 	}
 	else {
 		// move remaining dentries back
@@ -285,7 +284,6 @@ int ext2_dir_remove_file(uint8_t *device, int dir_inum, int target_inum) {
 
 	// update terminator
 	dir_size -= target->rec_len;
-	//*(uint32_t*)((uint8_t*)block + dir_size + 1) = 0;
 	dir->i_size -= dir_size;
 	free_inode(device, target_inum);
 	return 1;
