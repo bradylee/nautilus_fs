@@ -1,3 +1,16 @@
+/* ext_access.c
+ *
+ * Authors: Brady Lee and David Williams
+ * Based on the ext2 specification found at http://www.nongnu.org/ext2-doc/ext2.html
+ *
+ * Contains the lowest level methods for interacting with an ext2
+ * filesystem image.
+ *
+ * Built for adding ext2 functionality to the Nautilus OS, Northwestern University
+ */
+
+
+
 #include "fs/ext2/ext2_access.h"
 #include "fs/ext2/ext2fs.h"
 
@@ -10,18 +23,20 @@
 #define DEBUG(fmt, args...)
 #endif
 
-///////////////////////////////////////////////////////////
-//  Accessors for the basic components of ext2.
-///////////////////////////////////////////////////////////
-
-// Return a pointer to the primary superblock of a filesystem.
+/* get_super_block
+ *
+ * returns a pointer to the super block at start of fs
+ */
 struct ext2_super_block *get_super_block(void * fs) {
 
 	//Super block is always a constant offset away from fs
 	return (struct ext2_super_block*)(fs+SUPERBLOCK_OFFSET);
 }
 
-// Return the block size for a filesystem.
+/* get_block_size
+ *
+ * returns the block size for a filesystem.
+ */
 uint32_t get_block_size(void *fs) {
 	uint32_t shift;
 	struct ext2_super_block* sb;
@@ -32,8 +47,11 @@ uint32_t get_block_size(void *fs) {
 	return (1024 << shift);
 }
 
-// Return a pointer to a block given its number.
-// get_block(fs, 0) == fs;
+/* get_block
+ *
+ * returns a pointer to a block given its block number.
+ */
+
 void * get_block(void * fs, uint32_t block_num) {
 	uint32_t block_size;
 	block_size = get_block_size(fs);
@@ -42,9 +60,11 @@ void * get_block(void * fs, uint32_t block_num) {
 	return (void*)(block_size*block_num + fs);
 }
 
-// Return a pointer to the first block group descriptor in a filesystem. Real
-// ext2 filesystems will have several of these, but, for simplicity, we will
-// assume there is only one.
+/* get_block_group
+ *
+ * returns a pointer to the first block group descriptor.
+ * Ext2 allows by definition for multiple groups. Currently, only supports one group
+ */
 struct ext2_group_desc *get_block_group(void * fs, uint32_t block_group_num) {
 	struct ext2_super_block* sb;
 	sb = get_super_block(fs);
@@ -53,10 +73,10 @@ struct ext2_group_desc *get_block_group(void * fs, uint32_t block_group_num) {
 	return (struct ext2_group_desc *)((void*)sb+SUPERBLOCK_SIZE);
 }
 
-
-// Return a pointer to an inode given its number. In a real filesystem, this
-// would require finding the correct block group, but you may assume it's in the
-// first one.
+/* get_inode
+ *
+ * returns a pointer to an inode, given its inode number
+ */
 struct ext2_inode* get_inode(void *fs, uint32_t inode_num) {
 	struct ext2_group_desc* bg;
 	uint32_t inode_table_num;
@@ -75,8 +95,12 @@ struct ext2_inode* get_inode(void *fs, uint32_t inode_num) {
 	return (struct ext2_inode*)((void*)inode_table + (inode_num -1)*sizeof(struct ext2_inode));
 }
 
-// Chunk a filename into pieces.
-// split_path("/a/b/c") will return {"a", "b", "c"}.
+/* split_path
+ *
+ * returns an array of each part of a filepath
+ * i.e. split_path("/a/b/c") = {"a", "b", "c"}
+ * also puts the number of parts into the specified location for convenience
+ */
 char** split_path(char *path, int *num_parts) {
 	int num_slashes = 0;
 	for (char * slash = path; slash != NULL; slash = strchr(slash + 1, '/')) {
@@ -97,20 +121,23 @@ char** split_path(char *path, int *num_parts) {
 	// Get the last piece.
 	parts[i] = (char *)malloc((strlen(piece_start) + 1)*sizeof(char));
 	strcpy(parts[i], " ");
-	//strncpy(parts[i], piece_start, strlen(piece_start));
 	strcpy(parts[i], piece_start);
 	return parts;
 }
 
-// Convenience function to get the inode of the root directory.
+/* get_root_dir
+ *
+ * Convenience function to get pointer to inode of the root directory.
+ */
 struct ext2_inode* get_root_dir(void * fs) {
 	return get_inode(fs, EXT2_ROOT_INO);
 }
 
-// Given the inode for a directory and a filename, return the inode number of
-// that file inside that directory, or 0 if it doesn't exist there.
-// 
-// name should be a single component: "foo.txt", not "/files/foo.txt".
+/* get_inode_from_dir
+ *
+ * searches a directory for a file by name
+ * returns the inode number of the file if found, or 0
+ */
 uint32_t get_inode_from_dir(void *fs, struct ext2_inode *dir, char *name) {
 	char *tempname;
 
@@ -144,9 +171,11 @@ uint32_t get_inode_from_dir(void *fs, struct ext2_inode *dir, char *name) {
 	return 0;
 }
 
-
-// Find the inode number for a file by its full path.
-// This is the functionality that ext2cat ultimately needs.
+/* get_inode_by_path
+ *
+ * given a path to a file, tries to find the inode number of the file
+ * returns inode number of file if found, or 0
+ */
 uint32_t get_inode_by_path(void *fs, char *path) {
 	int num_parts = 0;
 	if (!strcmp(path, "/")) {
@@ -177,7 +206,12 @@ uint32_t get_inode_by_path(void *fs, char *path) {
 	return new_inode_num;
 }
 
-//Returns the inode number of the first free inode
+/* alloc_inode
+ *
+ * Searches the inode bitmap in the front of the block group for a free inode
+ * also sets the inode to taken in the bitmap when found.
+ * returns the inode number of the first free inode, or 0
+ */
 uint32_t alloc_inode(void *fs) {
 	struct ext2_group_desc *bg = get_block_group(fs, 1);	//get block group descriptor
 	uint8_t *bitmap_byte = get_block(fs, bg->bg_inode_bitmap);	//get inode bitmap first byte
@@ -200,6 +234,11 @@ uint32_t alloc_inode(void *fs) {
 	return 0;
 }
 
+/* free_inode
+ *
+ * sets an inode to free in the inode bitmap at front of block group
+ * returns 1
+ */
 int free_inode(void *fs, uint32_t inum) {
 	struct ext2_group_desc *bg = get_block_group(fs, 1);	//get block group descriptor
 	uint8_t *bitmap_byte = get_block(fs, bg->bg_inode_bitmap);	//get inode bitmap first byte

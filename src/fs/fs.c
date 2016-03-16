@@ -1,4 +1,5 @@
 #include <fs/fs.h>
+#include <fs/testfs.h>
 
 #define INFO(fmt, args...) printk("FILESYSTEM: " fmt "\n", ##args)
 #define DEBUG(fmt, args...) printk("FILESYSTEM (DEBUG): " fmt "\n", ##args)
@@ -67,6 +68,11 @@ void test_fs() {
 	DEBUG("Removing file %d", ext2_file_delete(&RAMFS_START, path));
 	DEBUG("Removing file %d", ext2_file_delete(&RAMFS_START, path));
 	
+
+	run_all();
+	
+
+
 	/*
   printk("-----------------------------------\n");
 	fn = file_open("/large_test_file3", O_RDWR);
