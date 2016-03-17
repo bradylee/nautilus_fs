@@ -148,10 +148,12 @@ uint32_t get_inode_from_dir(void *fs, struct ext2_inode *dir, char *name) {
 	//while(dentry->inode){
 	ssize_t blocksize = get_block_size(fs) - dentry->rec_len;
 	int count = 0;
-	//while(blocksize > 0) {
-	while(++count < 20) {
+	while(blocksize > 0) {
+	//while(++count < 20) {
 		int i;
+		//DEBUG("malloc %d", dentry->name_len);
 		tempname = (char*)malloc(dentry->name_len*sizeof(char));
+
 		//copy file name to temp name, then null terminate it
 		for(i = 0; i<dentry->name_len;i++){
 			tempname[i] = dentry->name[i];
@@ -159,8 +161,8 @@ uint32_t get_inode_from_dir(void *fs, struct ext2_inode *dir, char *name) {
 		tempname[i] = '\0';
 
 		//if there is a match, return the inode number
-		DEBUG("INODE DIR: name %s, tempname %s", name, tempname);
-		DEBUG("INODE DIR: blocksize %d, reclen %d", blocksize, dentry->rec_len);
+		//DEBUG("INODE DIR: name %s, tempname %s", name, tempname);
+		//DEBUG("INODE DIR: blocksize %d, reclen %d", blocksize, dentry->rec_len);
 		if(strcmp(name,tempname) ==0){
 			free((void*)tempname);
 			return dentry->inode;
@@ -245,13 +247,14 @@ uint32_t alloc_inode(void *fs) {
 int free_inode(void *fs, uint32_t inum) {
 	struct ext2_group_desc *bg = get_block_group(fs, 1);	//get block group descriptor
 	uint8_t *bitmap_byte = get_block(fs, bg->bg_inode_bitmap);	//get inode bitmap first byte
-	bitmap_byte += (inum / 8);
-	int bit = (inum % 8);
-	if (!bit) {
-		bit = 8;
-	}
-	uint8_t mask = !(1 << (bit - 1));
+	int test = inum-1;
+	DEBUG("%d",test/8);
+	bitmap_byte += (test/ 8);
+	int bit = (test % 8);
+	DEBUG("* %d %x",bit, *bitmap_byte);
+	uint8_t mask = ~(1 << (bit));
 	*bitmap_byte &= mask;
+	DEBUG("* %x %x",mask, *bitmap_byte);
 	return 1;
 }
 

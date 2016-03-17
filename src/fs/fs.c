@@ -34,14 +34,43 @@ void test_fs() {
 	char path1[] = "/null";
 	buf = malloc(50);
 	fn = open(path1, O_RDWR);
-	DEBUG("Read %d", read(fn, buf, 15));
+	/*DEBUG("Read %d", read(fn, buf, 15));
 	DEBUG("Text %s", buf);
 	DEBUG("Seeking %d", lseek(fn, 0, 0));
 	DEBUG("Write %d", write(fn, "jjjije\nifjeiffdfdfdfdfj", 15));
 	DEBUG("Seeking %d", lseek(fn, 0, 0));
 	DEBUG("Read %d", read(fn, buf, 15));
-	DEBUG("Text %s", buf);
+	DEBUG("Text %s", buf);*/
 
+	DEBUG("********************************");
+	char* path2 = "/readme";
+	char* rd_buf = malloc(50);
+	char* wr_buf = malloc(50);
+	fn = open(path2, O_RDWR);
+	int result = read(fn, rd_buf, 50);
+	DEBUG("Read %d %s", result, rd_buf);
+	DEBUG("********************************");
+	path2 = "/a";
+	fn = open(path2, O_RDWR|O_CREAT);
+	wr_buf = "testing";
+	result = write(fn, wr_buf,7);
+	DEBUG("Write %d", result);
+	lseek(fn,0,0);
+	result = read(fn, rd_buf, 7);
+	DEBUG("Read %d %s", result, rd_buf);
+	DEBUG("********************************");
+	ext2_file_delete(&RAMFS_START,path2);
+	fn = open(path2, O_RDWR|O_CREAT);
+	//lseek(fn, 10,0);
+	wr_buf = "testing";
+	//result = write(fn, wr_buf,1);
+	//DEBUG("Write %d", result);
+	//lseek(fn,0,0);
+	rd_buf = malloc(50);
+	result = read(fn, rd_buf, 7);
+	DEBUG("Read %d %s", result, rd_buf);
+	DEBUG("********************************");
+	free(buf);
 	/*
 	char path2[] = "/a";
 	DEBUG("FILE CREATE TEST");
@@ -138,31 +167,37 @@ void set_file_interface(struct file_int *fi, enum Filesystem fs) {
 
 int open(char *path, int access) {
 	static uint32_t n = 1;
-
+	DEBUG("HERE");
 	spin_lock(&open_files.lock);
-
 	struct file *fd = malloc(sizeof(struct file));
 
 	// if filesystem of path is ext2 then...
 	set_file_interface(&fd->interface, ext2);
-
+	fd->access = access;
+	DEBUG("HERE2 %d", file_exists(path));
 	if (file_exists(path)) {
+		DEBUG("HEREA %s", path);
 		fd->fileid = file_open(fd, path, access);
 		//fd->fileid = fd->interface.open(&RAMFS_START, path, access);
 	}
 	else if (file_has_access(fd, O_WRONLY) && file_has_access(fd, O_CREAT)) {
+		DEBUG("HEREB");
 		int id = file_create(path);
-		if (!id)
+		if (!id) {
+			spin_unlock(&open_files.lock);
 			return -1;
+		}
 		DEBUG("Created %s %d", path, id);
 		fd->fileid = id;
 	}
 	else {
+		DEBUG("HEREC");
+		spin_unlock(&open_files.lock);
 		return -1;
 	}
 
+	DEBUG("HERE3");
 	fd->filenum = n++; // allows file to be opened multiple times
-	fd->access = access;
 	fd->position = 0;
 
 	// check already opened
@@ -253,7 +288,7 @@ ssize_t __lseek(struct file *fd, size_t offset, int whence) {
 		//size_t size = fd->interface.get_size(&RAMFS_START, fd->fileid);
 		//uint64_t size = ext2_get_file_size((uint32_t)fd->filenum);
 		//printk("file size = %d\n",size);
-		fd->position = size + offset-1;
+		fd->position = size + offset;
 	}
 	else {
 		return -1;
@@ -286,6 +321,10 @@ int file_exists(char *path) {
 // creates file with the given path
 uint32_t file_create(char* path) {
   return ext2_file_create(&RAMFS_START, path);
+}
+
+uint32_t file_delete(char* path) {
+	return ext2_file_delete(&RAMFS_START, path);
 }
 
 void directory_list(char* path) {

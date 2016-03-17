@@ -35,6 +35,10 @@ ssize_t ext2_read(uint8_t *fs, int inode_number, char *buf, size_t num_bytes,siz
 	int total_bytes_read = 0;	
 	uint8_t * cur = blocks + offset_remainder;
 	int i = 0;
+	if(ext2_get_file_size(fs, inode_number) == 0) {
+		return 0;
+	}
+	
 	//If trying to read past the first 12 blocks, end early
 	if ((block_offset + blocks_to_read + (remainder_to_read != 0)) >= NUM_DATA_BLOCKS) {
 		if (block_offset < NUM_DATA_BLOCKS) {
@@ -49,7 +53,7 @@ ssize_t ext2_read(uint8_t *fs, int inode_number, char *buf, size_t num_bytes,siz
 	printk("read info: %d %d %d %d %d\n", block_offset, offset_remainder, bytes_from_first, blocks_to_read, remainder_to_read);
 	//Read to end of first partial block
 	while (i<bytes_from_first && *cur != ENDFILE) {		
-		DEBUG("EXT2 READ: char %d %c", *cur, *cur);
+		//DEBUG("EXT2 READ: char %d %c", *cur, *cur);
 		buf[total_bytes_read] = *cur;		
 		i++;
 		total_bytes_read++;
@@ -106,6 +110,7 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 	int end_flag = 0;
 	int end_bytes = 0;
 	uint8_t * cur = blocks + offset_remainder;
+	printk("file size: %d\n", ext2_get_file_size(fs, inode_number));
 	if(ext2_get_file_size(fs, inode_number) == 0) {
 		end_flag = 1;
 		end_bytes = num_bytes;
@@ -153,7 +158,9 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 	}
 	i = 0;
 	block_offset++;
+	if(i<remainder_to_write) {
 	cur = (char*)(get_block(&RAMFS_START,inode_pointer->i_block[block_offset]));
+	}
 	//Write last partial block
 	while (i<remainder_to_write) {			
 		//printk("Writing Block: %d\n",block_offset);
@@ -287,7 +294,6 @@ int ext2_file_delete(uint8_t *fs, char *path) {
 		DEBUG("FILE DELETE: Not a file %x", inode->i_mode);
 		return 0;
 	}
-
 	// get directory path
 	int num_parts = 0;
 	char **parts = split_path(path, &num_parts);
@@ -299,13 +305,14 @@ int ext2_file_delete(uint8_t *fs, char *path) {
 	for (int i=0; i < num_parts-1; i++) {
 		newstring_size += strlen(parts[i]) + 1;
 	}
-	char *newstring = malloc(newstring_size);
+	
+	char* newstring = malloc(newstring_size);
 	strcpy(newstring, "/");
 	for (int i=0; i < num_parts-1; i++) {
-		strcat(newstring,parts[i]);
-		if (i != num_parts-2) {
-			strcat(newstring, "/");
-		}
+	        strcat(newstring,parts[i]);
+	        if (i != num_parts-2) {
+		        strcat(newstring, "/");
+	        }
 	}
 
 	// get inode of directory
@@ -388,28 +395,28 @@ int ext2_dir_remove_file(uint8_t *fs, int dir_inum, int target_inum) {
 		prev = dentry;
 		dentry = (struct ext2_dir_entry_2*)((uint8_t*)dentry + dentry->rec_len);
 		blocksize -= dentry->rec_len;
-		DEBUG("Dir Remove: dentry %p, inode %d, length %d, lenex %d, cursize %d", dentry, dentry->inode, dentry->rec_len, ext2_dentry_find_len(dentry), blocksize);
+		//DEBUG("Dir Remove: dentry %p, inode %d, length %d, lenex %d, cursize %d", dentry, dentry->inode, dentry->rec_len, ext2_dentry_find_len(dentry), blocksize);
 		if (dentry->inode == target_inum) {
 			target = dentry;
-			DEBUG("Dir Remove: Found dentry");
+			//DEBUG("Dir Remove: Found dentry");
 		}
 	}
 	if (blocksize) {
-		ERROR("DIR REMOVE FILE: rec_len values not aligned %d", blocksize);
+		//ERROR("DIR REMOVE FILE: rec_len values not aligned %d", blocksize);
 	}
 	int is_target_end = 0;
 	if (target == dentry) {
 		is_target_end = 1;
-		DEBUG("DIR REMOVE: End target");
+		//DEBUG("DIR REMOVE: End target");
 	}
-	DEBUG("Dir Remove: size %d", blocksize);
+	//DEBUG("Dir Remove: size %d", blocksize);
 	if (target == NULL) {
 		ERROR("Dir Remove: Did not find dentry!");
 		return 0;
 	}
 	size_t dir_size = (uint64_t)dentry - (uint64_t)block + ext2_dentry_find_len(dentry); 
-	DEBUG("Dir Remove: last reclen %d", ext2_dentry_find_len(dentry)); 
-	DEBUG("Dir Remove: dir_size %d, %x", dir_size, dir_size); 
+	//DEBUG("Dir Remove: last reclen %d", ext2_dentry_find_len(dentry)); 
+	//DEBUG("Dir Remove: dir_size %d, %x", dir_size, dir_size); 
 
 	if (is_target_end) {
 		prev->rec_len += target->rec_len;
@@ -420,8 +427,8 @@ int ext2_dir_remove_file(uint8_t *fs, int dir_inum, int target_inum) {
 		void *move_dst = (void*)((uint8_t*)target);
 		void *move_src = (void*)((uint8_t*)target + target->rec_len);
 		size_t move_len = (uint64_t)block + dir_size - (uint64_t)move_src;
-		DEBUG("Dir Remove: move %p %p", move_dst, move_src);
-		DEBUG("Dir Remove: move len %d", move_len);
+		//DEBUG("Dir Remove: move %p %p", move_dst, move_src);
+		//DEBUG("Dir Remove: move len %d", move_len);
 		memmove(move_dst, move_src, move_len);
 	}
 

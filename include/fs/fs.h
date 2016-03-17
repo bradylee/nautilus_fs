@@ -92,6 +92,7 @@ ssize_t __lseek(struct file *fd, size_t offset, int whence);
 
 int file_exists(char *path);
 uint32_t file_create(char* path);
+uint32_t file_delete(char* path);
 int file_has_access(struct file *fd, int access);
 
 // mostly for debugging
