@@ -1,5 +1,7 @@
 This is a fork of https://bitbucket.org/kchale/nautilus
 
+Example config file at https://www.dropbox.com/s/fnz5dskmga69iyj/nautilus-fs.config?dl=0
+
 ```
 
     _   __               __   _  __                
