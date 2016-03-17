@@ -14,21 +14,21 @@
 //static uint8_t EOF = 255;
 
 uint32_t ext2_open(uint8_t *device, char *path, int access);
+uint32_t ext2_create_file(uint8_t *device, char *path);
+int ext2_remove(uint8_t *device, char *path);
+int ext2_exists(uint8_t *device, char *path);
 ssize_t ext2_read(uint8_t *device, int inode_number, char *buf, size_t num_bytes, size_t offset);
 ssize_t ext2_write(uint8_t *device, int inode_number, char *buf, size_t num_bytes, size_t offset);
 size_t ext2_get_size(uint8_t *device, int inode_number);
-size_t ext2_get_file_size(uint8_t *device, int inode_number);
-size_t ext2_get_dir_size(uint8_t *device, int inode_number);
+
+//size_t ext2_get_file_size(uint8_t *device, int inode_number);
+//size_t ext2_get_dir_size(uint8_t *device, int inode_number);
 
 //uint32_t ext2_get_directory_inode(uint8_t *device, char *path);
-int ext2_file_exists(uint8_t *device, char *path);
-uint32_t ext2_file_create(uint8_t *device, char *path);
-int ext2_file_delete(uint8_t *device, char *path);
-int ext2_dir_add_file(uint8_t *device, int dir_inum, int target_inum, char* name, uint8_t file_type);
-int ext2_dir_remove_file(uint8_t *device, int dir_inum, int target_inum);
+//int ext2_dir_add(uint8_t *device, int dir_inum, int target_inum, char* name, uint8_t file_type);
+//int ext2_dir_delete(uint8_t *device, int dir_inum, int target_inum);
 
-uint16_t ext2_dentry_find_len(struct ext2_dir_entry_2 *dentry);
-
-int ext2_inode_has_mode(struct ext2_inode *inode, int mode);
+//uint16_t ext2_dentry_find_len(struct ext2_dir_entry_2 *dentry);
+//int ext2_inode_has_mode(struct ext2_inode *inode, int mode);
 
 #endif

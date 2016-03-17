@@ -10,8 +10,32 @@
 #define DEBUG(fmt, args...)
 #endif
 
+static void iterate_opened(void (*callback)(struct file*));
+static void file_print(struct file* fd);
+static void set_file_interface(struct file_int *fi, enum Filesystem fs);
+static struct file* get_open_file(uint32_t filenum);
+static int file_has_access(struct file *fd, int access);
+static uint32_t create_file(char* path);
+
+static struct {
+	struct list_head head;
+	spinlock_t lock;
+} open_files;
+
+static inline int file_open(struct file *fd, char *path, int access) {
+	return fd->interface.open(&RAMFS_START, path, access);
+}
+static inline ssize_t file_read(struct file *fd, char *buf, size_t num_bytes) {
+	return fd->interface.read(&RAMFS_START, fd->fileid, buf, num_bytes, fd->position);
+}
+static inline ssize_t file_write(struct file *fd, char *buf, size_t num_bytes) {
+	return fd->interface.write(&RAMFS_START, fd->fileid, buf, num_bytes, fd->position);
+}
+static inline int file_get_size(struct file *fd) {
+	return fd->interface.get_size(&RAMFS_START, fd->fileid);
+}
+
 void test_fs() {
-	init_fs();
   char *buf;
 	int fn;
 
@@ -59,7 +83,7 @@ void test_fs() {
 	result = read(fn, rd_buf, 7);
 	DEBUG("Read %d %s", result, rd_buf);
 	DEBUG("********************************");
-	ext2_file_delete(&RAMFS_START,path2);
+	ext2_remove(&RAMFS_START,path2);
 	fn = open(path2, O_RDWR|O_CREAT);
 	//lseek(fn, 10,0);
 	wr_buf = "testing";
@@ -74,7 +98,7 @@ void test_fs() {
 	/*
 	char path2[] = "/a";
 	DEBUG("FILE CREATE TEST");
-	DEBUG("Creating file %d", file_create(path2));
+	DEBUG("Creating file %d", create_file(path2));
 	fn = open(path2, O_RDWR);
   DEBUG("Wrote %d", write(fn, "Testing file /a", 15));
 	DEBUG("Seeking %d", lseek(fn, 0, 0));
@@ -82,7 +106,7 @@ void test_fs() {
 	DEBUG("Read %s", buf);
 	//int inum = get_inode_by_path(&RAMFS_START, path);
 	//DEBUG("Inode %d", inum); 
-	//DEBUG("Size %d", ext2_get_file_size(&RAMFS_START, inum)); 
+	//DEBUG("Size %d", ext2_get_size(&RAMFS_START, inum)); 
 	//DEBUG("Done creating");
 	//DEBUG("");
 	free(buf);
@@ -98,15 +122,11 @@ void test_fs() {
 	buf = malloc(1024);
 	DEBUG("Read %d", read(fn, buf, rootsize));
 	path = "/readme";
-	DEBUG("Removing file %d", ext2_file_delete(&RAMFS_START, path));
-	DEBUG("Removing file %d", ext2_file_delete(&RAMFS_START, path));
+	DEBUG("Removing file %d", ext2_remove(&RAMFS_START, path));
+	DEBUG("Removing file %d", ext2_remove(&RAMFS_START, path));
 	*/
 	
-
-	run_all();
 	
-
-
 	/*
   printk("-----------------------------------\n");
 	fn = file_open("/large_test_file3", O_RDWR);
@@ -123,7 +143,7 @@ void test_fs() {
 	printk("\nGet: %d\n", get_inode_by_path(&RAMFS_START, "/test1"));
 	*/
 
-	deinit_fs();
+	run_all();
 	DEBUG("Done");
 }
 
@@ -141,30 +161,6 @@ void deinit_fs(void) {
 	INFO("Done deiniting.");
 }
 
-void iterate_opened(void (*callback)(struct file*)) {
-	struct list_head *cur;
-	struct list_head *temp;
-	struct file *fd;
-
-	list_for_each_safe(cur, temp, &open_files.head) {
-		fd = (struct file*)cur;
-		callback(fd);
-	}
-}
-
-void file_print(struct file* fd) {
-	printk("%d %d\n", fd->filenum, fd->fileid);
-}
-
-void set_file_interface(struct file_int *fi, enum Filesystem fs) {
-	if (fs == ext2) {
-		fi->open = ext2_open;
-		fi->read = ext2_read;
-		fi->write = ext2_write;
-		fi->get_size = ext2_get_file_size;
-	}
-}
-
 int open(char *path, int access) {
 	static uint32_t n = 1;
 	DEBUG("HERE");
@@ -174,15 +170,15 @@ int open(char *path, int access) {
 	// if filesystem of path is ext2 then...
 	set_file_interface(&fd->interface, ext2);
 	fd->access = access;
-	DEBUG("HERE2 %d", file_exists(path));
-	if (file_exists(path)) {
+	DEBUG("HERE2 %d", exists(path));
+	if (exists(path)) {
 		DEBUG("HEREA %s", path);
 		fd->fileid = file_open(fd, path, access);
 		//fd->fileid = fd->interface.open(&RAMFS_START, path, access);
 	}
 	else if (file_has_access(fd, O_WRONLY) && file_has_access(fd, O_CREAT)) {
 		DEBUG("HEREB");
-		int id = file_create(path);
+		int id = create_file(path);
 		if (!id) {
 			spin_unlock(&open_files.lock);
 			return -1;
@@ -228,19 +224,6 @@ int close(uint32_t filenum) {
 	return 1;
 }
 
-struct file* get_open_file(uint32_t filenum) {
-	struct list_head *cur;
-	struct file *fd;
-
-	list_for_each(cur, &open_files.head) {
-		fd = (struct file*)cur;
-		if (fd->filenum == filenum) {
-			return fd;
-		}
-	}
-	return NULL;
-}
-
 ssize_t read(int filenum, char *buf, size_t num_bytes) {
 	struct file *fd = get_open_file(filenum);
 
@@ -272,10 +255,6 @@ ssize_t write(int filenum, char *buf, size_t num_bytes) {
 	return n;
 }
 
-int file_has_access(struct file *fd, int access) {
-	return ((fd->access & access) == access);
-}
-
 ssize_t __lseek(struct file *fd, size_t offset, int whence) {
 	if(whence == 0) {
 		fd->position = offset;
@@ -286,7 +265,7 @@ ssize_t __lseek(struct file *fd, size_t offset, int whence) {
 	else if(whence == 2) {
 		size_t size = file_get_size(fd);
 		//size_t size = fd->interface.get_size(&RAMFS_START, fd->fileid);
-		//uint64_t size = ext2_get_file_size((uint32_t)fd->filenum);
+		//uint64_t size = ext2_get_size((uint32_t)fd->filenum);
 		//printk("file size = %d\n",size);
 		fd->position = size + offset;
 	}
@@ -314,17 +293,12 @@ ssize_t tell(int filenum) {
 }
 
 // returns 1 if file exists, 0 other
-int file_exists(char *path) {
-  return ext2_file_exists(&RAMFS_START,path);
+int exists(char *path) {
+  return ext2_exists(&RAMFS_START,path);
 }
 
-// creates file with the given path
-uint32_t file_create(char* path) {
-  return ext2_file_create(&RAMFS_START, path);
-}
-
-uint32_t file_delete(char* path) {
-	return ext2_file_delete(&RAMFS_START, path);
+int remove(char* path) {
+	return ext2_remove(&RAMFS_START, path);
 }
 
 void directory_list(char* path) {
@@ -348,6 +322,52 @@ void directory_list(char* path) {
 		}
 		directory_entry = (struct ext2_dir_entry_2*)((void*)directory_entry+directory_entry->rec_len);
 		free(tempname);
+	}
+}
+
+static int file_has_access(struct file *fd, int access) {
+	return ((fd->access & access) == access);
+}
+
+static void iterate_opened(void (*callback)(struct file*)) {
+	struct list_head *cur;
+	struct list_head *temp;
+	struct file *fd;
+
+	list_for_each_safe(cur, temp, &open_files.head) {
+		fd = (struct file*)cur;
+		callback(fd);
+	}
+}
+
+static void file_print(struct file* fd) {
+	printk("%d %d\n", fd->filenum, fd->fileid);
+}
+
+// creates file with the given path
+static uint32_t create_file(char* path) {
+  return ext2_create_file(&RAMFS_START, path);
+}
+
+static struct file* get_open_file(uint32_t filenum) {
+	struct list_head *cur;
+	struct file *fd;
+
+	list_for_each(cur, &open_files.head) {
+		fd = (struct file*)cur;
+		if (fd->filenum == filenum) {
+			return fd;
+		}
+	}
+	return NULL;
+}
+
+static void set_file_interface(struct file_int *fi, enum Filesystem fs) {
+	if (fs == ext2) {
+		fi->open = ext2_open;
+		fi->read = ext2_read;
+		fi->write = ext2_write;
+		fi->get_size = ext2_get_size;
 	}
 }
 

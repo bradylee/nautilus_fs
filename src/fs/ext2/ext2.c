@@ -9,6 +9,11 @@
 #define DEBUG(fmt, args...)
 #endif
 
+static uint16_t ext2_dentry_find_len(struct ext2_dir_entry_2 *dentry);
+static int ext2_inode_has_mode(struct ext2_inode *inode, int mode);
+static int dentry_add(uint8_t *fs, int dir_inum, int target_inum, char *name, uint8_t file_type);
+static int dentry_remove(uint8_t *fs, int dir_inum, int target_inum);
+
 uint32_t ext2_open(uint8_t *fs, char *path, int access) {
 	uint32_t inode_num = (uint32_t) get_inode_by_path(fs, path);
 	return inode_num;
@@ -35,7 +40,7 @@ ssize_t ext2_read(uint8_t *fs, int inode_number, char *buf, size_t num_bytes,siz
 	int total_bytes_read = 0;	
 	uint8_t * cur = blocks + offset_remainder;
 	int i = 0;
-	if(ext2_get_file_size(fs, inode_number) == 0) {
+	if(ext2_get_size(fs, inode_number) == 0) {
 		return 0;
 	}
 	
@@ -110,8 +115,8 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 	int end_flag = 0;
 	int end_bytes = 0;
 	uint8_t * cur = blocks + offset_remainder;
-	printk("file size: %d\n", ext2_get_file_size(fs, inode_number));
-	if(ext2_get_file_size(fs, inode_number) == 0) {
+	printk("file size: %d\n", ext2_get_size(fs, inode_number));
+	if(ext2_get_size(fs, inode_number) == 0) {
 		end_flag = 1;
 		end_bytes = num_bytes;
 	}
@@ -181,16 +186,18 @@ ssize_t ext2_write(uint8_t *fs, int inode_number, char *buf, size_t num_bytes, s
 	return total_bytes_written;
 }
 
+/*
 size_t ext2_get_size(uint8_t *fs, int inum) {
 	struct ext2_inode *inode = get_inode(fs, inum);	
 	if (ext2_inode_has_mode(inode, EXT2_S_IFREG))
-		return ext2_get_file_size(fs, inum);
+		return ext2_get_size(fs, inum);
 	if (ext2_inode_has_mode(inode, EXT2_S_IFDIR))
 		return ext2_get_dir_size(fs, inum);
 	return 0;
 }
+*/
 
-size_t ext2_get_file_size(uint8_t *fs, int inum) {
+size_t ext2_get_size(uint8_t *fs, int inum) {
 	struct ext2_inode *inode = get_inode(fs, inum);	
 	uint64_t temp = inode->i_size_high;
 	temp = temp << 32;
@@ -198,6 +205,7 @@ size_t ext2_get_file_size(uint8_t *fs, int inum) {
 	return temp;
 }
 
+/*
 size_t ext2_get_dir_size(uint8_t *fs, int inum) {
 	struct ext2_inode *dir = get_inode(fs, inum);
 	void *block = get_block(fs, dir->i_block[0]);
@@ -220,14 +228,15 @@ size_t ext2_get_dir_size(uint8_t *fs, int inum) {
 	}
 	return 0;
 }
+*/
 
-int ext2_file_exists(uint8_t *fs, char *path) {
+int ext2_exists(uint8_t *fs, char *path) {
 	uint32_t inode_num = (uint32_t)get_inode_by_path(fs, path);
 	return inode_num != 0;
 }
 
 // return new inode number; 0 if failed
-uint32_t ext2_file_create(uint8_t *fs, char *path) {
+uint32_t ext2_create_file(uint8_t *fs, char *path) {
 	uint32_t free_inode = alloc_inode(fs);
 	DEBUG("EXT2 CREATE: Allocated node %d", free_inode);
 
@@ -265,7 +274,7 @@ uint32_t ext2_file_create(uint8_t *fs, char *path) {
 
 		// create dentry
 		if (dir_num) {
-			ext2_dir_add_file(fs, dir_num, free_inode, name, 1);
+			dentry_add(fs, dir_num, free_inode, name, 1);
 			//fill in inode with stuff
 			inode_pointer->i_mode = EXT2_S_IFREG;
 			inode_pointer->i_size = 0;
@@ -278,11 +287,11 @@ uint32_t ext2_file_create(uint8_t *fs, char *path) {
 	return free_inode;
 }
 
-int ext2_inode_has_mode(struct ext2_inode *inode, int mode) {
+static int ext2_inode_has_mode(struct ext2_inode *inode, int mode) {
 	return ((inode->i_mode & mode) == mode);
 }
 
-int ext2_file_delete(uint8_t *fs, char *path) {
+int ext2_remove(uint8_t *fs, char *path) {
 	uint32_t inum = get_inode_by_path(fs, path);
 	if (!inum) {
 		DEBUG("Bad path");
@@ -326,7 +335,7 @@ int ext2_file_delete(uint8_t *fs, char *path) {
 
 	// create dentry
 	if (dir_num) {
-		ext2_dir_remove_file(fs, dir_num, inum);
+		dentry_remove(fs, dir_num, inum);
 	}
 	else {
 		DEBUG("Bad dir path");
@@ -336,13 +345,13 @@ int ext2_file_delete(uint8_t *fs, char *path) {
 	return 1;
 }
 
-uint16_t ext2_dentry_find_len(struct ext2_dir_entry_2 *dentry) {
+static uint16_t ext2_dentry_find_len(struct ext2_dir_entry_2 *dentry) {
 	uint16_t len = (uint16_t)(sizeof(dentry->inode) + sizeof(dentry->name_len) + sizeof(dentry->file_type) + dentry->name_len + sizeof(uint16_t));
 	//DEBUG("Dentry Find Len: %s", dentry->name);
 	return (len += (DENTRY_ALIGN - len % DENTRY_ALIGN));
 }
 
-int ext2_dir_add_file(uint8_t *fs, int dir_inum, int target_inum, char *name, uint8_t file_type) {
+static int dentry_add(uint8_t *fs, int dir_inum, int target_inum, char *name, uint8_t file_type) {
 	struct ext2_inode *dir = get_inode(fs,dir_inum);
 
 	//create directory entry
@@ -380,7 +389,7 @@ int ext2_dir_add_file(uint8_t *fs, int dir_inum, int target_inum, char *name, ui
 	return 1;
 }
 
-int ext2_dir_remove_file(uint8_t *fs, int dir_inum, int target_inum) {
+static int dentry_remove(uint8_t *fs, int dir_inum, int target_inum) {
 	struct ext2_inode *dir = get_inode(fs, dir_inum);
 	void *block = get_block(fs, dir->i_block[0]);
 	ssize_t blocksize = get_block_size(fs);
