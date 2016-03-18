@@ -25,10 +25,10 @@ struct filesystem {
 };
 
 struct file_int {
-  uint32_t (*open)(uint8_t*, char*, int);
-  ssize_t (*read)(uint8_t*, int, char*, size_t, size_t);
-  ssize_t (*write)(uint8_t*, int, char*, size_t, size_t);
-  size_t (*get_size)(uint8_t*, int);
+	uint32_t (*open)(uint8_t*, char*, int);
+	ssize_t (*read)(uint8_t*, int, char*, size_t, size_t);
+	ssize_t (*write)(uint8_t*, int, char*, size_t, size_t);
+	size_t (*get_size)(uint8_t*, int);
 };
 
 struct file {
@@ -48,13 +48,10 @@ void test_fs(void);
 void init_fs(void);
 void deinit_fs(void);
 
-//void set_file_interface(struct file_int *fi, enum Filesystem);
-//struct file* get_open_file(uint32_t filenum);
-//void iterate_opened(void (*callback)(struct file *fd));
-
 int open(char *path, int access);
 int close(uint32_t filenum);
-int remove(char* path);
+int remove(char *path);
+int exists(char *path);
 ssize_t read(int filenum, char *buf, size_t num_bytes);
 ssize_t write(int filenum, char *buf, size_t num_bytes);
 ssize_t lseek(int filenum, size_t offset, int whence);
@@ -63,11 +60,6 @@ ssize_t tell(int filenum);
 void __close(struct file *fd);
 ssize_t __lseek(struct file *fd, size_t offset, int whence);
 
-int exists(char *path);
-//uint32_t file_create(char* path);
-//int file_has_access(struct file *fd, int access);
-
-//void file_print(struct file *fd);
 
 void directory_list(char *path);
 

@@ -36,35 +36,35 @@ static inline int file_get_size(struct file *fd) {
 }
 
 void test_fs() {
-  char *buf;
+	char *buf;
 	int fn;
 
 	/*
-	DEBUG("Opening files...");
-	fn = open("/readme", O_RDWR);
-	fn = open("/null", O_RDWR);
-	fn = open("/nothing", O_RDWR);
-	fn = open("/nothing", O_RDWR);
-	DEBUG("Done opening");
-	DEBUG("Printing...");
-	iterate_opened(file_print);
-	DEBUG("Done printing");
-	DEBUG("Closing files...");
-	iterate_opened(__close);
-	DEBUG("Done closing");
-	DEBUG("");
-	*/
+		 DEBUG("Opening files...");
+		 fn = open("/readme", O_RDWR);
+		 fn = open("/null", O_RDWR);
+		 fn = open("/nothing", O_RDWR);
+		 fn = open("/nothing", O_RDWR);
+		 DEBUG("Done opening");
+		 DEBUG("Printing...");
+		 iterate_opened(file_print);
+		 DEBUG("Done printing");
+		 DEBUG("Closing files...");
+		 iterate_opened(__close);
+		 DEBUG("Done closing");
+		 DEBUG("");
+		 */
 
 	char path1[] = "/null";
 	buf = malloc(50);
 	fn = open(path1, O_RDWR);
 	/*DEBUG("Read %d", read(fn, buf, 15));
-	DEBUG("Text %s", buf);
-	DEBUG("Seeking %d", lseek(fn, 0, 0));
-	DEBUG("Write %d", write(fn, "jjjije\nifjeiffdfdfdfdfj", 15));
-	DEBUG("Seeking %d", lseek(fn, 0, 0));
-	DEBUG("Read %d", read(fn, buf, 15));
-	DEBUG("Text %s", buf);*/
+		DEBUG("Text %s", buf);
+		DEBUG("Seeking %d", lseek(fn, 0, 0));
+		DEBUG("Write %d", write(fn, "jjjije\nifjeiffdfdfdfdfj", 15));
+		DEBUG("Seeking %d", lseek(fn, 0, 0));
+		DEBUG("Read %d", read(fn, buf, 15));
+		DEBUG("Text %s", buf);*/
 
 	DEBUG("********************************");
 	char* path2 = "/readme";
@@ -96,14 +96,14 @@ void test_fs() {
 	DEBUG("********************************");
 	free(buf);
 	/*
-	char path2[] = "/a";
-	DEBUG("FILE CREATE TEST");
-	DEBUG("Creating file %d", create_file(path2));
-	fn = open(path2, O_RDWR);
-  DEBUG("Wrote %d", write(fn, "Testing file /a", 15));
-	DEBUG("Seeking %d", lseek(fn, 0, 0));
-	DEBUG("Read %d", read(fn, buf, 15));
-	DEBUG("Read %s", buf);
+		 char path2[] = "/a";
+		 DEBUG("FILE CREATE TEST");
+		 DEBUG("Creating file %d", create_file(path2));
+		 fn = open(path2, O_RDWR);
+		 DEBUG("Wrote %d", write(fn, "Testing file /a", 15));
+		 DEBUG("Seeking %d", lseek(fn, 0, 0));
+		 DEBUG("Read %d", read(fn, buf, 15));
+		 DEBUG("Read %s", buf);
 	//int inum = get_inode_by_path(&RAMFS_START, path);
 	//DEBUG("Inode %d", inum); 
 	//DEBUG("Size %d", ext2_get_size(&RAMFS_START, inum)); 
@@ -113,35 +113,35 @@ void test_fs() {
 	*/
 
 	/*
-	DEBUG("FILE REMOVE TEST");
-	DEBUG("%d", get_block_size(&RAMFS_START));
-	uint32_t rootnum = get_inode_by_path(&RAMFS_START, "/");
-	DEBUG("Root inode %d", rootnum);
-	fn = open("/", 1);
-	size_t rootsize = 1024;
-	buf = malloc(1024);
-	DEBUG("Read %d", read(fn, buf, rootsize));
-	path = "/readme";
-	DEBUG("Removing file %d", ext2_remove(&RAMFS_START, path));
-	DEBUG("Removing file %d", ext2_remove(&RAMFS_START, path));
-	*/
-	
-	
+		 DEBUG("FILE REMOVE TEST");
+		 DEBUG("%d", get_block_size(&RAMFS_START));
+		 uint32_t rootnum = get_inode_by_path(&RAMFS_START, "/");
+		 DEBUG("Root inode %d", rootnum);
+		 fn = open("/", 1);
+		 size_t rootsize = 1024;
+		 buf = malloc(1024);
+		 DEBUG("Read %d", read(fn, buf, rootsize));
+		 path = "/readme";
+		 DEBUG("Removing file %d", ext2_remove(&RAMFS_START, path));
+		 DEBUG("Removing file %d", ext2_remove(&RAMFS_START, path));
+		 */
+
+
 	/*
-  printk("-----------------------------------\n");
-	fn = file_open("/large_test_file3", O_RDWR);
-	fn = file_open("/large_test_file4", O_RDWR);
-	fn = file_open("/large_test_file", O_RDWR);
-	file_seek(fn,get_block_size(deviceRAMFS_START)*12,0);
-	char* read_buf = malloc(get_block_size(deviceRAMFS_START)*12);
-	char* write_buf = "****Testing****";
-	int result = file_write(fn,write_buf, strlen(write_buf));
-	printk("Write1: \n%d\n", result);
-	file_seek(fn,get_block_size(deviceRAMFS_START)*11,0);
-	result = file_read(fn,read_buf,get_block_size(deviceRAMFS_START)*2);
-	printk("Read1: \n%s \n%d\n",read_buf, result);
-	printk("\nGet: %d\n", get_inode_by_path(&RAMFS_START, "/test1"));
-	*/
+		 printk("-----------------------------------\n");
+		 fn = file_open("/large_test_file3", O_RDWR);
+		 fn = file_open("/large_test_file4", O_RDWR);
+		 fn = file_open("/large_test_file", O_RDWR);
+		 file_seek(fn,get_block_size(deviceRAMFS_START)*12,0);
+		 char* read_buf = malloc(get_block_size(deviceRAMFS_START)*12);
+		 char* write_buf = "****Testing****";
+		 int result = file_write(fn,write_buf, strlen(write_buf));
+		 printk("Write1: \n%d\n", result);
+		 file_seek(fn,get_block_size(deviceRAMFS_START)*11,0);
+		 result = file_read(fn,read_buf,get_block_size(deviceRAMFS_START)*2);
+		 printk("Read1: \n%s \n%d\n",read_buf, result);
+		 printk("\nGet: %d\n", get_inode_by_path(&RAMFS_START, "/test1"));
+		 */
 
 	run_all();
 	DEBUG("Done");
@@ -198,9 +198,9 @@ int open(char *path, int access) {
 
 	// check already opened
 	//if (!get_open_file(fd->filenum)) { 
-		list_add(&fd->file_node, &open_files.head);
-		spinlock_init(&fd->lock);
-		DEBUG("Opened %s %d %d", path, fd->filenum, fd->fileid);
+	list_add(&fd->file_node, &open_files.head);
+	spinlock_init(&fd->lock);
+	DEBUG("Opened %s %d %d", path, fd->filenum, fd->fileid);
 	//}
 
 	spin_unlock(&open_files.lock);
@@ -294,7 +294,7 @@ ssize_t tell(int filenum) {
 
 // returns 1 if file exists, 0 other
 int exists(char *path) {
-  return ext2_exists(&RAMFS_START,path);
+	return ext2_exists(&RAMFS_START,path);
 }
 
 int remove(char* path) {
@@ -346,7 +346,7 @@ static void file_print(struct file* fd) {
 
 // creates file with the given path
 static uint32_t create_file(char* path) {
-  return ext2_create_file(&RAMFS_START, path);
+	return ext2_create_file(&RAMFS_START, path);
 }
 
 static struct file* get_open_file(uint32_t filenum) {
