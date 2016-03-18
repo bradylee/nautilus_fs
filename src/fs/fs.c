@@ -197,11 +197,11 @@ int open(char *path, int access) {
 	fd->position = 0;
 
 	// check already opened
-	if (!get_open_file(fd->filenum)) { 
+	//if (!get_open_file(fd->filenum)) { 
 		list_add(&fd->file_node, &open_files.head);
 		spinlock_init(&fd->lock);
 		DEBUG("Opened %s %d %d", path, fd->filenum, fd->fileid);
-	}
+	//}
 
 	spin_unlock(&open_files.lock);
 	return fd->filenum;
