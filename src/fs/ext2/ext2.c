@@ -291,7 +291,7 @@ static int ext2_inode_has_mode(struct ext2_inode *inode, int mode) {
 	return ((inode->i_mode & mode) == mode);
 }
 
-int ext2_remove(uint8_t *fs, char *path) {
+int ext2_remove_file(uint8_t *fs, char *path) {
 	uint32_t inum = get_inode_by_path(fs, path);
 	if (!inum) {
 		DEBUG("Bad path");

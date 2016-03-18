@@ -1,6 +1,8 @@
 #include <fs/fs.h>
 #include <fs/testfs.h>
 
+//TODO: deal with hard links
+
 #define INFO(fmt, args...) printk("FILESYSTEM: " fmt "\n", ##args)
 #define DEBUG(fmt, args...) printk("FILESYSTEM (DEBUG): " fmt "\n", ##args)
 #define ERROR(fmt, args...) printk("FILESYSTEM (ERROR): " fmt "\n", ##args)
@@ -83,7 +85,7 @@ void test_fs() {
 	result = read(fn, rd_buf, 7);
 	DEBUG("Read %d %s", result, rd_buf);
 	DEBUG("********************************");
-	ext2_remove(&RAMFS_START,path2);
+	ext2_remove_file(&RAMFS_START,path2);
 	fn = open(path2, O_RDWR|O_CREAT);
 	//lseek(fn, 10,0);
 	wr_buf = "testing";
@@ -122,8 +124,8 @@ void test_fs() {
 		 buf = malloc(1024);
 		 DEBUG("Read %d", read(fn, buf, rootsize));
 		 path = "/readme";
-		 DEBUG("Removing file %d", ext2_remove(&RAMFS_START, path));
-		 DEBUG("Removing file %d", ext2_remove(&RAMFS_START, path));
+		 DEBUG("Removing file %d", ext2_remove_file(&RAMFS_START, path));
+		 DEBUG("Removing file %d", ext2_remove_file(&RAMFS_START, path));
 		 */
 
 
@@ -162,7 +164,7 @@ void deinit_fs(void) {
 }
 
 int open(char *path, int access) {
-	static uint32_t n = 1;
+	static uint32_t n = 3; // 0 1 2 reserved in Linux
 	DEBUG("HERE");
 	spin_lock(&open_files.lock);
 	struct file *fd = malloc(sizeof(struct file));
@@ -193,7 +195,7 @@ int open(char *path, int access) {
 	}
 
 	DEBUG("HERE3");
-	fd->filenum = n++; // allows file to be opened multiple times
+	fd->filenum = n++; 
 	fd->position = 0;
 
 	// check already opened
@@ -298,9 +300,10 @@ int exists(char *path) {
 }
 
 int remove(char* path) {
-	return ext2_remove(&RAMFS_START, path);
+	return ext2_remove_file(&RAMFS_START, path);
 }
 
+// TODO: move to ext2 level
 void directory_list(char* path) {
 	char* tempname;
 	struct ext2_dir_entry_2* directory_entry;
@@ -317,6 +320,7 @@ void directory_list(char* path) {
 			tempname[i] = directory_entry->name[i];
 		}
 		tempname[i] = '\0';
+		// TODO: change to simply ignore any file starting with a . (hidden files)
 		if(strcmp(tempname,".") && strcmp(tempname,"..")) { //strcmp -> 0 = equal, !0 = not equal
 			printk("%s\n", tempname);
 		}
